@@ -41,8 +41,11 @@ install: hyperkey
 	-launchctl bootout gui/$(UID)/$(LABEL) 2>/dev/null
 	mkdir -p $(PREFIX)/bin $(HOME)/Library/LaunchAgents $(HOME)/Library/Logs
 	install hyperkey $(BIN)
+	xattr -c $(BIN)
 	echo "$$PLIST_CONTENT" > $(PLIST)
 	launchctl bootstrap gui/$(UID) $(PLIST)
+	@echo "If you rebuilt the binary, toggle hyperkey off then on in the screen opening now."
+	open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 
 uninstall:
 	-launchctl bootout gui/$(UID)/$(LABEL) 2>/dev/null

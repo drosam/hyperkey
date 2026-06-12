@@ -120,13 +120,15 @@ tap = CGEvent.tapCreate(
 
 guard let tap else {
     removeRemap()
-    // Triggers the system Accessibility prompt (adds this binary to the list).
-    // Only shows once; later denied launches just exit and launchd retries.
-    let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-    AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
+    let interactive = isatty(STDIN_FILENO) != 0
+    if interactive {
+        // Running from a terminal: trigger the system Accessibility prompt once.
+        let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
+    }
     FileHandle.standardError.write("""
     Failed to create event tap.
-    Grant Accessibility permission to this binary (or the terminal it runs from):
+    Grant Accessibility permission to this binary:
     System Settings > Privacy & Security > Accessibility
 
     """.data(using: .utf8)!)
