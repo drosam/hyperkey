@@ -7,23 +7,40 @@ Turns caps lock into a hyper key (⇧⌃⌥⌘) on macOS. Single Swift file, no 
 - Works on all keyboards, including external ones plugged in later
 - Menu bar icon (✦) with a Quit item
 
-## Build
+## Install
 
 ```sh
-swiftc -O main.swift -o hyperkey
+make install
 ```
 
-## Run
+Builds the binary, copies it to `~/.local/bin/hyperkey`, and registers a
+LaunchAgent (`com.drosam.hyperkey`) that starts it at login and keeps it
+running — no terminal needed.
+
+On first launch macOS prompts for Accessibility permission for the binary
+itself (System Settings → Privacy & Security → Accessibility). Until granted,
+the process exits and launchd retries every ~10 s; once granted it comes up
+on its own. After reinstalling a rebuilt binary you may need to toggle the
+permission off and on again, since the binary's hash changed.
+
+Logs go to `~/Library/Logs/hyperkey.log` (quiet by default; pass `--verbose`
+for per-key logging when running by hand).
 
 ```sh
-./hyperkey
+make uninstall   # stop, remove binary + LaunchAgent, restore caps lock
 ```
 
-Requires Accessibility permission for the terminal you launch it from
-(System Settings → Privacy & Security → Accessibility). Without it, the
-event tap can't be created and the program exits with instructions.
+## Run manually
+
+```sh
+make build && ./hyperkey
+```
+
+Requires Accessibility permission for the terminal you launch it from.
 
 Quit via the ✦ menu bar icon or Ctrl+C — both restore normal caps lock.
+(When installed, quitting via the menu keeps it stopped until next login;
+restart early with `launchctl kickstart gui/$(id -u)/com.drosam.hyperkey`.)
 
 ## How it works
 

@@ -5,6 +5,12 @@ import IOKit.hidsystem
 
 setvbuf(stdout, nil, _IONBF, 0) // unbuffered so logs appear immediately when piped to a file
 
+let verbose = CommandLine.arguments.contains("--verbose")
+
+func logv(_ message: String) {
+    if verbose { print(message) }
+}
+
 // Caps lock's toggle (state + LED) happens inside the HID driver, below any event
 // tap — swallowing its flagsChanged event doesn't stop it. So instead we remap
 // caps lock -> F18 in the driver itself via hidutil: no caps state ever toggles,
@@ -76,11 +82,11 @@ func callback(
             if !hyperDown { // ignore autorepeat, it would reset hyperUsed
                 hyperDown = true
                 hyperUsed = false
-                print("hyper down")
+                logv("hyper down")
             }
         } else {
             hyperDown = false
-            print("hyper up\(hyperUsed ? "" : " — tap alone, toggling caps lock")")
+            logv("hyper up\(hyperUsed ? "" : " — tap alone, toggling caps lock")")
             if !hyperUsed {
                 toggleCapsLock()
             }
@@ -93,7 +99,7 @@ func callback(
             hyperUsed = true
         }
         event.flags.formUnion(hyperFlags)
-        print("hyper + keycode \(keycode)")
+        logv("hyper + keycode \(keycode)")
     }
 
     return Unmanaged.passUnretained(event)
@@ -113,9 +119,13 @@ tap = CGEvent.tapCreate(
 
 guard let tap else {
     removeRemap()
+    // Triggers the system Accessibility prompt (adds this binary to the list).
+    // Only shows once; later denied launches just exit and launchd retries.
+    let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+    AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
     FileHandle.standardError.write("""
     Failed to create event tap.
-    Grant Accessibility permission to your terminal:
+    Grant Accessibility permission to this binary (or the terminal it runs from):
     System Settings > Privacy & Security > Accessibility
 
     """.data(using: .utf8)!)
@@ -147,5 +157,5 @@ quitItem.target = menuHandler
 menu.addItem(quitItem)
 statusItem.menu = menu
 
-print("Caps lock remapped to F18 and intercepted. Press caps lock to test. Quit via menu bar ✦ or Ctrl+C.")
+print("hyperkey running — hold caps lock for ⇧⌃⌥⌘, tap alone to toggle caps. Quit via ✦ menu.")
 app.run()
