@@ -105,6 +105,7 @@ func callback(
     return Unmanaged.passUnretained(event)
 }
 
+removeRemap()
 installRemap()
 
 tap = CGEvent.tapCreate(
