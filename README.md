@@ -7,6 +7,11 @@ Turns caps lock into a hyper key (⇧⌃⌥⌘) on macOS. Single Swift file, no 
 - Works on all keyboards, including external ones plugged in later
 - Menu bar icon (✦) with a Quit item
 
+## Requirements
+
+- macOS with Swift available (`swiftc`)
+- Accessibility permission for the binary that runs `hyperkey`
+
 ## Install
 
 ```sh
@@ -42,6 +47,27 @@ Quit via the ✦ menu bar icon or Ctrl+C — both restore normal caps lock.
 (When installed, quitting via the menu keeps it stopped until next login;
 restart early with `launchctl kickstart gui/$(id -u)/com.drosam.hyperkey`.)
 
+For debug logging:
+
+```sh
+make build && ./hyperkey --verbose
+```
+
+## Development
+
+Common commands:
+
+```sh
+make build      # compile ./hyperkey
+make clean      # remove ./hyperkey
+make install    # build, install, and load LaunchAgent
+make uninstall  # unload LaunchAgent, remove install files, clear remap
+```
+
+The project intentionally stays small: `main.swift` contains the app, and the
+`Makefile` contains build/install lifecycle. Keep README install and permission
+notes current when user-facing behavior changes.
+
 ## How it works
 
 Caps lock's toggle (state + LED) happens inside the HID driver, below any
@@ -55,7 +81,7 @@ event tap, so swallowing its events doesn't neutralize it. Instead:
    lock state is flipped directly through IOKit
    (`IOHIDSetModifierLockState`), since it can't be toggled by posting events.
 
-The remap is removed on quit, Ctrl+C, and SIGTERM.
+The remap is removed on quit, Ctrl+C, SIGTERM, uninstall, and normal app exit.
 
 ## Caveats
 
