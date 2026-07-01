@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Project
 
-`hyperkey` is a tiny macOS Swift/AppKit menu bar utility. It remaps caps lock to F18 with `hidutil`, intercepts F18 with a HID-level `CGEventTap`, stamps ⇧⌃⌥⌘ onto other key events while held, and toggles real caps lock via IOKit when tapped alone.
+`hyperkey` is a tiny macOS Swift/AppKit menu bar utility. It remaps caps lock to F18 with `hidutil`, intercepts F18 with a HID-level `CGEventTap`, stamps ⇧⌃⌥⌘ onto other key events while held, and toggles real caps lock via IOKit when double-tapped alone.
 
 ## Commands
 

@@ -3,7 +3,7 @@
 Turns caps lock into a hyper key (⇧⌃⌥⌘) on macOS. Single Swift file, no dependencies.
 
 - **Hold caps lock + another key** → that key gets ⇧⌃⌥⌘ stamped onto it (bind hyper combos in apps, skhd, etc.)
-- **Tap caps lock alone** → normal caps lock toggle, LED included
+- **Double-tap caps lock alone** → normal caps lock toggle, LED included
 - Works on all keyboards, including external ones plugged in later
 - Menu bar icon (✦) with a Quit item
 
@@ -77,7 +77,7 @@ event tap, so swallowing its events doesn't neutralize it. Instead:
    so caps lock never toggles and the key arrives as plain F18 key events.
 2. A `CGEventTap` at the HID level intercepts F18: while it's held, a flag
    is set and ⇧⌃⌥⌘ is stamped onto every other key event.
-3. If F18 is released without any other key pressed in between, the caps
+3. If F18 is double-tapped without any other key pressed in between, the caps
    lock state is flipped directly through IOKit
    (`IOHIDSetModifierLockState`), since it can't be toggled by posting events.
 

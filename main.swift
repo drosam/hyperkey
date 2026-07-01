@@ -40,7 +40,7 @@ func removeRemap() {
 signal(SIGINT) { _ in removeRemap(); exit(0) }
 signal(SIGTERM) { _ in removeRemap(); exit(0) }
 
-// Caps lock state lives in the HID driver, so a tap-alone toggle can't be done
+// Caps lock state lives in the HID driver, so a double-tap toggle can't be done
 // by posting events — we flip the lock state (and LED) directly through IOKit.
 func toggleCapsLock() {
     let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(kIOHIDSystemClass))
@@ -57,8 +57,10 @@ func toggleCapsLock() {
 }
 
 let hyperFlags: CGEventFlags = [.maskShift, .maskControl, .maskAlternate, .maskCommand]
+let doubleTapInterval: TimeInterval = 0.35
 var hyperDown = false
 var hyperUsed = false // did any key get hyper-stamped while caps was held?
+var lastTapAloneTime: TimeInterval?
 
 var tap: CFMachPort?
 
@@ -86,9 +88,19 @@ func callback(
             }
         } else {
             hyperDown = false
-            logv("hyper up\(hyperUsed ? "" : " — tap alone, toggling caps lock")")
-            if !hyperUsed {
-                toggleCapsLock()
+            if hyperUsed {
+                lastTapAloneTime = nil
+                logv("hyper up")
+            } else {
+                let now = Date.timeIntervalSinceReferenceDate
+                if let lastTap = lastTapAloneTime, now - lastTap <= doubleTapInterval {
+                    lastTapAloneTime = nil
+                    logv("hyper up — double tap, toggling caps lock")
+                    toggleCapsLock()
+                } else {
+                    lastTapAloneTime = now
+                    logv("hyper up — tap alone")
+                }
             }
         }
         return nil
@@ -160,5 +172,5 @@ quitItem.target = menuHandler
 menu.addItem(quitItem)
 statusItem.menu = menu
 
-print("hyperkey running — hold caps lock for ⇧⌃⌥⌘, tap alone to toggle caps. Quit via ✦ menu.")
+print("hyperkey running — hold caps lock for ⇧⌃⌥⌘, double-tap alone to toggle caps. Quit via ✦ menu.")
 app.run()
