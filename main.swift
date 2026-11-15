@@ -5,7 +5,24 @@ import IOKit.hidsystem
 
 setvbuf(stdout, nil, _IONBF, 0) // unbuffered so logs appear immediately when piped to a file
 
-let verbose = CommandLine.arguments.contains("--verbose")
+let arguments = CommandLine.arguments.dropFirst()
+
+if arguments.contains("--version") || arguments.contains("-v") {
+    print("hyperkey \(hyperkeyVersion)")
+    exit(0)
+}
+
+if arguments.contains("--help") || arguments.contains("-h") {
+    print("""
+    usage: hyperkey [--verbose] [--version] [--help]
+
+    Hold caps lock for ⇧⌃⌥⌘, double-tap it alone to toggle caps lock.
+    Requires Accessibility permission. Quit via the ✦ menu bar icon.
+    """)
+    exit(0)
+}
+
+let verbose = arguments.contains("--verbose")
 
 func logv(_ message: String) {
     if verbose { print(message) }
@@ -156,6 +173,10 @@ let menuHandler = MenuHandler()
 let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 statusItem.button?.title = "✦"
 let menu = NSMenu()
+let versionItem = NSMenuItem(title: "hyperkey \(hyperkeyVersion)", action: nil, keyEquivalent: "")
+versionItem.isEnabled = false
+menu.addItem(versionItem)
+menu.addItem(.separator())
 let quitItem = NSMenuItem(title: "Quit Hyperkey", action: #selector(MenuHandler.quit), keyEquivalent: "")
 quitItem.target = menuHandler
 menu.addItem(quitItem)
