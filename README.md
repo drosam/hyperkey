@@ -115,6 +115,9 @@ and `make uninstall`.
 
 ## Troubleshooting
 
+**`Refusing to load formula drosam/tap/hyperkey from untrusted tap`.** Homebrew 6
+only loads third-party taps you trust. Run `brew trust drosam/tap`, then retry.
+
 **hyperkey does not react.** Check Accessibility permission (see above).
 Logs: `$(brew --prefix)/var/log/hyperkey.log` (Homebrew) or
 `~/Library/Logs/hyperkey.log` (`make install`).
