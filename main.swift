@@ -57,10 +57,7 @@ func toggleCapsLock() {
 }
 
 let hyperFlags: CGEventFlags = [.maskShift, .maskControl, .maskAlternate, .maskCommand]
-let doubleTapInterval: TimeInterval = 0.35
-var hyperDown = false
-var hyperUsed = false // did any key get hyper-stamped while caps was held?
-var lastTapAloneTime: TimeInterval?
+var hyperState = HyperKeyState()
 
 var tap: CFMachPort?
 
@@ -79,42 +76,34 @@ func callback(
     }
 
     let keycode = event.getIntegerValueField(.keyboardEventKeycode)
-    if keycode == f18Keycode {
-        if type == .keyDown {
-            if !hyperDown { // ignore autorepeat, it would reset hyperUsed
-                hyperDown = true
-                hyperUsed = false
-                logv("hyper down")
-            }
-        } else {
-            hyperDown = false
-            if hyperUsed {
-                lastTapAloneTime = nil
-                logv("hyper up")
-            } else {
-                let now = Date.timeIntervalSinceReferenceDate
-                if let lastTap = lastTapAloneTime, now - lastTap <= doubleTapInterval {
-                    lastTapAloneTime = nil
-                    logv("hyper up — double tap, toggling caps lock")
-                    toggleCapsLock()
-                } else {
-                    lastTapAloneTime = now
-                    logv("hyper up — tap alone")
-                }
-            }
-        }
-        return nil
-    }
+    let isKeyDown = type == .keyDown
+    let input: KeyInput = keycode == f18Keycode
+        ? (isKeyDown ? .hyperDown : .hyperUp)
+        : (isKeyDown ? .otherKeyDown : .otherKeyUp)
 
-    if hyperDown {
-        if type == .keyDown {
-            hyperUsed = true
-        }
+    let wasHyperDown = hyperState.isHyperDown
+    let wasHyperUsed = hyperState.hyperUsed
+    let action = hyperState.handle(input, at: Date.timeIntervalSinceReferenceDate)
+
+    switch action {
+    case .pass:
+        return Unmanaged.passUnretained(event)
+    case .passWithHyper:
         event.flags.formUnion(hyperFlags)
         logv("hyper + keycode \(keycode)")
+        return Unmanaged.passUnretained(event)
+    case .swallow:
+        if input == .hyperDown {
+            if !wasHyperDown { logv("hyper down") }
+        } else {
+            logv(wasHyperUsed ? "hyper up" : "hyper up — tap alone")
+        }
+        return nil
+    case .swallowAndToggleCapsLock:
+        logv("hyper up — double tap, toggling caps lock")
+        toggleCapsLock()
+        return nil
     }
-
-    return Unmanaged.passUnretained(event)
 }
 
 removeRemap()

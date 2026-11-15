@@ -5,6 +5,9 @@ PLIST = $(HOME)/Library/LaunchAgents/$(LABEL).plist
 LOG = $(HOME)/Library/Logs/hyperkey.log
 UID := $(shell id -u)
 
+BUILD = build
+SOURCES = main.swift HyperKeyState.swift
+
 define PLIST_CONTENT
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -34,8 +37,13 @@ export PLIST_CONTENT
 
 build: hyperkey
 
-hyperkey: main.swift
-	swiftc -O main.swift -o hyperkey
+hyperkey: $(SOURCES)
+	swiftc -O $(SOURCES) -o hyperkey
+
+test:
+	@mkdir -p $(BUILD)
+	swiftc HyperKeyState.swift Tests/main.swift -o $(BUILD)/tests
+	$(BUILD)/tests
 
 install: hyperkey
 	-launchctl bootout gui/$(UID)/$(LABEL) 2>/dev/null
@@ -53,6 +61,6 @@ uninstall:
 	hidutil property --set '{"UserKeyMapping":[]}' >/dev/null
 
 clean:
-	rm -f hyperkey
+	rm -rf $(BUILD) hyperkey
 
-.PHONY: build install uninstall clean
+.PHONY: build test install uninstall clean
