@@ -1,0 +1,47 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: hyperkey version
+      description: Output of `hyperkey --version`
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and architecture
+      placeholder: macOS 15.1, Apple Silicon
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options:
+        - Homebrew (brew services)
+        - GitHub release download
+        - make install (source)
+        - Run manually from source
+    validations:
+      required: true
+  - type: textarea
+    id: keyboard
+    attributes:
+      label: Keyboard
+      description: Built-in, external model, other remappers running (Karabiner, skhd, ...)
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output of `hyperkey --verbose` while reproducing, or `~/Library/Logs/hyperkey.log` / `$(brew --prefix)/var/log/hyperkey.log`. Shows keycodes only; remove anything you consider sensitive.
+      render: text
