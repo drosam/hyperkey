@@ -1,94 +1,152 @@
 # hyperkey
 
-Turns caps lock into a hyper key (⇧⌃⌥⌘) on macOS. Single Swift file, no dependencies.
+> Turn caps lock into a hyper key (⇧⌃⌥⌘) on macOS. Tiny, native, no dependencies.
 
-- **Hold caps lock + another key** → that key gets ⇧⌃⌥⌘ stamped onto it (bind hyper combos in apps, skhd, etc.)
-- **Double-tap caps lock alone** → normal caps lock toggle, LED included
-- Works on all keyboards, including external ones plugged in later
-- Menu bar icon (✦) with a Quit item
+Hold caps lock and press any key to send it with ⇧⌃⌥⌘, a modifier combo no app
+uses by default, so you get a whole free layer for shortcuts (Raycast,
+skhd, Hammerspoon, app shortcuts, ...). Double-tap caps lock to get normal
+caps lock back.
 
-## Requirements
+## Highlights
 
-- macOS with Swift available (`swiftc`)
-- Accessibility permission for the binary that runs `hyperkey`
+- **Hold caps lock + key** -> that key with ⇧⌃⌥⌘.
+- **Double-tap caps lock alone** -> real caps lock toggle, LED included.
+- **Works on every keyboard**, including external ones plugged in later.
+- **Invisible:** menu bar icon (✦) with version and Quit, no Dock icon, no window.
+- **Small and auditable:** a few hundred lines of Swift, no network access, no dependencies.
 
 ## Install
 
+Requires macOS 13 or later. Universal binary (Apple Silicon and Intel).
+
+### Homebrew (recommended)
+
 ```sh
+brew install drosam/tap/hyperkey
+brew services start hyperkey
+```
+
+`brew services` starts hyperkey now and at every login via a LaunchAgent.
+It appears under System Settings -> General -> Login Items & Extensions ->
+**Allow in the Background**, not under Open at Login.
+
+Update with `brew upgrade hyperkey`, then re-enable Accessibility (see below).
+
+### GitHub release download
+
+Download `hyperkey-X.Y.Z.zip` and `SHA256SUMS.txt` from the
+[latest release](https://github.com/drosam/hyperkey/releases/latest), then verify:
+
+```sh
+shasum -a 256 -c SHA256SUMS.txt
+gh attestation verify hyperkey-X.Y.Z.zip --repo drosam/hyperkey
+```
+
+The attestation proves the zip was built by this repo's release workflow.
+Unzip and put `hyperkey` somewhere on your `PATH`. A browser download is
+quarantined by Gatekeeper; clear it with `xattr -d com.apple.quarantine hyperkey`
+after verifying.
+
+### Build from source
+
+```sh
+git clone https://github.com/drosam/hyperkey.git
+cd hyperkey
 make install
 ```
 
-Builds the binary, copies it to `~/.local/bin/hyperkey`, and registers a
-LaunchAgent (`com.drosam.hyperkey`) that starts it at login and keeps it
-running — no terminal needed.
+Requires Xcode Command Line Tools (`xcode-select --install`). This builds
+`build/hyperkey`, installs it to `~/.local/bin/hyperkey` and loads a
+LaunchAgent (`com.drosam.hyperkey`) that starts it at login. Do not use this
+and `brew services` at the same time; `make install` refuses if the brew
+service is loaded. See [CONTRIBUTING.md](CONTRIBUTING.md) for local code
+signing so permission survives rebuilds.
 
-On first launch macOS prompts for Accessibility permission for the binary
-itself (System Settings → Privacy & Security → Accessibility). Until granted,
-the process exits and launchd retries every ~10 s; once granted it comes up
-on its own. After reinstalling a rebuilt binary you may need to toggle the
-permission off and on again, since the binary's hash changed.
+## Accessibility permission
 
-Logs go to `~/Library/Logs/hyperkey.log` (quiet by default; pass `--verbose`
-for per-key logging when running by hand).
+hyperkey uses a keyboard event tap, so macOS requires Accessibility
+permission for the hyperkey binary:
 
-```sh
-make uninstall   # stop, remove binary + LaunchAgent, restore caps lock
-```
+System Settings -> Privacy & Security -> Accessibility -> enable `hyperkey`.
 
-## Run manually
+Until granted, hyperkey exits and the LaunchAgent retries every ~10 s; once
+granted it starts on its own.
 
-```sh
-make build && ./hyperkey
-```
-
-Requires Accessibility permission for the terminal you launch it from.
-
-Quit via the ✦ menu bar icon or Ctrl+C — both restore normal caps lock.
-(When installed, quitting via the menu keeps it stopped until next login;
-restart early with `launchctl kickstart gui/$(id -u)/com.drosam.hyperkey`.)
-
-For debug logging:
+**After every upgrade or rebuild**, macOS sees a new binary. If hyperkey
+stops reacting, remove it from the Accessibility list (or toggle it off and
+on), then restart it:
 
 ```sh
-make build && ./hyperkey --verbose
+brew services restart hyperkey                        # Homebrew
+launchctl kickstart -k gui/$(id -u)/com.drosam.hyperkey  # make install
 ```
 
-## Development
+Release builds are ad-hoc signed (no paid Apple Developer ID), which is why
+the grant does not carry over between versions.
 
-Common commands:
+## Usage
 
 ```sh
-make build      # compile ./hyperkey
-make clean      # remove ./hyperkey
-make install    # build, install, and load LaunchAgent
-make uninstall  # unload LaunchAgent, remove install files, clear remap
+hyperkey            # run in the foreground
+hyperkey --verbose  # log keycodes (not text) for debugging
+hyperkey --version
+hyperkey --help
 ```
 
-The project intentionally stays small: `main.swift` contains the app, and the
-`Makefile` contains build/install lifecycle. Keep README install and permission
-notes current when user-facing behavior changes.
+Quit from the ✦ menu or with Ctrl+C. Both restore normal caps lock. Under
+`brew services` or `make install`, quitting from the menu keeps it stopped
+until the next login or a restart command above.
 
 ## How it works
 
 Caps lock's toggle (state + LED) happens inside the HID driver, below any
 event tap, so swallowing its events doesn't neutralize it. Instead:
 
-1. `hidutil` remaps caps lock → F18 in the driver itself (`UserKeyMapping`),
+1. `hidutil` remaps caps lock -> F18 in the driver itself (`UserKeyMapping`),
    so caps lock never toggles and the key arrives as plain F18 key events.
-2. A `CGEventTap` at the HID level intercepts F18: while it's held, a flag
-   is set and ⇧⌃⌥⌘ is stamped onto every other key event.
-3. If F18 is double-tapped without any other key pressed in between, the caps
-   lock state is flipped directly through IOKit
-   (`IOHIDSetModifierLockState`), since it can't be toggled by posting events.
+2. A `CGEventTap` at the HID level intercepts F18: while it's held, ⇧⌃⌥⌘ is
+   stamped onto every other key event.
+3. If F18 is double-tapped without any other key in between, the caps lock
+   state is flipped directly through IOKit (`IOHIDSetModifierLockState`),
+   since it can't be toggled by posting events.
 
-The remap is removed on quit, Ctrl+C, SIGTERM, uninstall, and normal app exit.
+The remap is removed on quit, Ctrl+C, SIGTERM (including `brew services stop`),
+and `make uninstall`.
 
-## Caveats
+## Troubleshooting
 
-- The `hidutil` remap is system-wide but not persistent: a reboot clears it.
-- If the process is killed with SIGKILL, the remap stays orphaned (caps lock
-  acts as F18 with nothing listening). Fix:
+**hyperkey does not react.** Check Accessibility permission (see above).
+Logs: `$(brew --prefix)/var/log/hyperkey.log` (Homebrew) or
+`~/Library/Logs/hyperkey.log` (`make install`).
 
-  ```sh
-  hidutil property --set '{"UserKeyMapping":[]}'
-  ```
+**Caps lock does nothing at all.** hyperkey was killed with SIGKILL or
+crashed and left the remap behind. Clear it:
+
+```sh
+hidutil property --set '{"UserKeyMapping":[]}'
+```
+
+**Shortcuts fire twice or behave oddly.** Make sure only one hyperkey runs
+(`pgrep -l hyperkey`) and that no other remapper (Karabiner-Elements, etc.)
+also maps caps lock.
+
+The `hidutil` remap is not persistent: a reboot clears it, and hyperkey sets
+it again at launch.
+
+## Uninstall
+
+```sh
+brew services stop hyperkey && brew uninstall hyperkey   # Homebrew
+make uninstall                                           # source install
+```
+
+Then remove hyperkey from the Accessibility list.
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © David Rosa Moncayo
