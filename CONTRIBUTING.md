@@ -40,6 +40,35 @@ If a crashed run leaves caps lock mapped to F18:
 hidutil property --set '{"UserKeyMapping":[]}'
 ```
 
+## Developing while installed via Homebrew
+
+Only one hyperkey may run at a time. Stop the Homebrew service while testing a
+local build, then start it again.
+
+Quick test:
+
+```sh
+brew services stop hyperkey
+make test
+make build && build/hyperkey --verbose   # Ctrl+C to quit
+brew services start hyperkey
+```
+
+Use `build/hyperkey`, not `hyperkey`: the bare name runs the Homebrew copy on
+your `PATH`.
+
+Trying a change for a few days:
+
+```sh
+brew services stop hyperkey
+make install       # refuses while the Homebrew service is loaded
+# ... use it ...
+make uninstall
+brew services start hyperkey
+```
+
+`pgrep -l hyperkey` shows what is running.
+
 ## Local code signing (recommended)
 
 macOS ties Accessibility permission to the binary's code signature. Ad-hoc
@@ -70,3 +99,5 @@ or share its private key.
 2. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. Approve the `release` environment deployment in GitHub Actions. The
    workflow builds, attests, publishes the release and bumps the Homebrew tap.
+4. Update locally: `brew update && brew upgrade hyperkey`, toggle hyperkey off
+   and on in Accessibility, then `brew services restart hyperkey`.
