@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Toolchain
+        run: swiftc --version
+
+      - name: Unit tests
+        run: make test
+
+      - name: Universal build
+        run: make dist SIGN_ID=- VERSION=0.0.0-ci
+
+      - name: Verify binary
+        run: |
+          set -euo pipefail
+          archs=$(lipo -archs build/hyperkey)
+          for required in arm64 x86_64; do
+            grep -qw "$required" <<<"$archs" || { echo "::error::missing $required slice (have: $archs)"; exit 1; }
+          done
+          codesign --verify --strict --verbose build/hyperkey
+          test "$(build/hyperkey --version)" = "hyperkey 0.0.0-ci"
+          (cd build && shasum -a 256 -c SHA256SUMS.txt)
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

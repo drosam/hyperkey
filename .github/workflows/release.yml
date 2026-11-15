@@ -1,0 +1,172 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-26
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve version from tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)(\.[0-9]+)?)?$ ]]; then
+            echo "::error::Tag '$TAG' is not vX.Y.Z or vX.Y.Z-(alpha|beta|rc)[.N]"
+            exit 1
+          fi
+          version="${TAG#v}"
+          prerelease=false
+          if [[ "$version" == *-* ]]; then prerelease=true; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          set -euo pipefail
+          awk -v header="## [$VERSION]" '
+            index($0, header) == 1 { found = 1; next }
+            found && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::CHANGELOG.md has no '## [$VERSION]' section with content"
+            exit 1
+          fi
+
+      - name: Unit tests
+        run: make test
+
+      - name: Build universal release
+        run: make dist SIGN_ID=- VERSION="$VERSION"
+
+      - name: Verify binary
+        run: |
+          set -euo pipefail
+          archs=$(lipo -archs build/hyperkey)
+          for required in arm64 x86_64; do
+            grep -qw "$required" <<<"$archs" || { echo "::error::missing $required slice (have: $archs)"; exit 1; }
+          done
+          codesign --verify --strict --verbose build/hyperkey
+          test "$(build/hyperkey --version)" = "hyperkey $VERSION"
+          (cd build && shasum -a 256 -c SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: |
+            build/hyperkey-${{ steps.version.outputs.version }}.zip
+            build/SHA256SUMS.txt
+            release-notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  # Single gated job: one approval covers attestation, release and tap bump.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.build.outputs.version }}
+      PRERELEASE: ${{ needs.build.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: dist
+
+      - name: Verify checksums
+        working-directory: dist/build
+        run: sha256sum -c SHA256SUMS.txt
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/build/hyperkey-${{ needs.build.outputs.version }}.zip
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists; skipping creation"
+            exit 0
+          fi
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "hyperkey $TAG" \
+            --notes-file dist/release-notes.md \
+            "${flags[@]}" \
+            "dist/build/hyperkey-$VERSION.zip" \
+            dist/build/SHA256SUMS.txt
+
+      - name: Create tap token
+        id: tap-token
+        if: env.PRERELEASE == 'false'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.TAP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.TAP_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: homebrew-tap
+          permission-contents: write
+
+      - name: Checkout tap
+        if: env.PRERELEASE == 'false'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/homebrew-tap
+          token: ${{ steps.tap-token.outputs.token }}
+          path: tap
+
+      - name: Bump formula
+        if: env.PRERELEASE == 'false'
+        working-directory: tap
+        run: |
+          set -euo pipefail
+          sha=$(awk -v f="hyperkey-$VERSION.zip" '$2 == f { print $1 }' ../dist/build/SHA256SUMS.txt)
+          if [[ ! "$sha" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error::Could not read zip SHA256 from SHA256SUMS.txt"
+            exit 1
+          fi
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/hyperkey-$VERSION.zip"
+          sed -i -E "s#^  url \".*\"\$#  url \"$url\"#" Formula/hyperkey.rb
+          sed -i -E "s/^  sha256 \".*\"\$/  sha256 \"$sha\"/" Formula/hyperkey.rb
+          grep -qF "  url \"$url\"" Formula/hyperkey.rb || { echo "::error::url not updated"; exit 1; }
+          grep -qF "  sha256 \"$sha\"" Formula/hyperkey.rb || { echo "::error::sha256 not updated"; exit 1; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/hyperkey.rb
+          if git diff --staged --quiet; then
+            echo "::notice::Formula already at $VERSION"
+            exit 0
+          fi
+          git commit -m "hyperkey $VERSION"
+          git push origin HEAD
