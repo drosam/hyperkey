@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Building from source needs Swift 6 (Xcode Command Line Tools 16, macOS 14.5+); the binary still runs on macOS 13.
+- The Accessibility wait message says to enable your terminal app when hyperkey runs from a terminal.
 
 ### Fixed
 

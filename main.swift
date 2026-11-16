@@ -266,14 +266,17 @@ func start(with newTap: CFMachPort) {
 if let newTap = createTap() {
     start(with: newTap)
 } else {
-    if isatty(STDIN_FILENO) != 0 {
+    let interactive = isatty(STDIN_FILENO) != 0
+    if interactive {
         // Running from a terminal: trigger the system Accessibility prompt once.
         // Value of kAXTrustedCheckOptionPrompt, which Swift 6 rejects as shared mutable state.
         let promptKey = "AXTrustedCheckOptionPrompt"
         AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
     }
+    // macOS attributes a terminal-launched process to the terminal app.
+    let grantee = interactive ? "your terminal app" : "hyperkey"
     printError("""
-    Failed to create event tap. Waiting for Accessibility permission:
+    Failed to create event tap. Waiting for Accessibility permission for \(grantee):
     System Settings > Privacy & Security > Accessibility
     """)
     // Wait in-process instead of exiting, so launchd does not respawn and log every 10 s.

@@ -98,8 +98,25 @@ or share its private key.
 
 ## Releasing (maintainer)
 
+### One-time setup
+
+- GitHub environment `release`: required reviewer (the maintainer) and a
+  deployment rule allowing only tags matching `v*`.
+- In that environment: variable `TAP_APP_CLIENT_ID` and secret
+  `TAP_APP_PRIVATE_KEY` for a GitHub App installed on `drosam/homebrew-tap`
+  with Contents read and write. The workflow uses it to bump the formula.
+- Settings -> General -> Releases: enable release immutability.
+- Settings -> Actions -> General: allow only actions created by GitHub and
+  require actions to be pinned to a full-length commit SHA.
+
+### Each release
+
 1. Move `Unreleased` entries to a new `## [X.Y.Z] - YYYY-MM-DD` section in
-   `CHANGELOG.md` and merge to `main`.
+   `CHANGELOG.md`, point the `[Unreleased]:` link at `vX.Y.Z...HEAD`, add a
+   `[X.Y.Z]: .../releases/tag/vX.Y.Z` link, and merge to `main`. The release
+   fails without both the section and the link. Pre-release tags
+   (`vX.Y.Z-rc.N`) need their own `## [X.Y.Z-rc.N]` section and link; they
+   publish a GitHub pre-release and do not bump the Homebrew tap.
 2. Check the release build locally: `make dist verify SIGN_ID=- VERSION=X.Y.Z`
    (runs the x86_64 slice, so Apple Silicon needs Rosetta). Then tag and push:
    `git tag vX.Y.Z && git push origin vX.Y.Z`.

@@ -52,6 +52,10 @@ jobs:
             echo "::error::CHANGELOG.md has no '## [$VERSION]' section with content"
             exit 1
           fi
+          if ! awk -v ref="[$VERSION]: " 'index($0, ref) == 1 { found = 1 } END { exit !found }' CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '[$VERSION]: ' link reference"
+            exit 1
+          fi
 
       - name: Toolchain
         run: swiftc --version

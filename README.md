@@ -42,6 +42,9 @@ brew install drosam/tap/hyperkey
 brew services start hyperkey
 ```
 
+Homebrew 6 or later refuses third-party taps until you trust them. If the
+install stops with `untrusted tap`, run `brew trust drosam/tap` and retry.
+
 `brew services` starts hyperkey now and at every login via a LaunchAgent.
 It appears under System Settings -> General -> Login Items & Extensions ->
 **Allow in the Background**, not under Open at Login.
@@ -86,6 +89,9 @@ hyperkey uses a keyboard event tap, so macOS requires Accessibility
 permission for the hyperkey binary:
 
 System Settings -> Privacy & Security -> Accessibility -> enable `hyperkey`.
+
+When you run it by hand from a terminal, macOS asks for the terminal app
+instead (Terminal, iTerm2, ...); enable that app.
 
 Until granted, hyperkey waits without remapping caps lock and checks again
 every 2 s; once granted it starts on its own.
