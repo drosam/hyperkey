@@ -107,7 +107,7 @@ the grant does not carry over between versions.
 
 ```sh
 hyperkey            # run in the foreground
-hyperkey --verbose  # log keycodes (not text) for debugging
+hyperkey --verbose  # log keycodes (not text) pressed with caps lock held
 hyperkey --version
 hyperkey --help
 hyperkey --clear-remap  # remove a leftover caps lock remap and exit
@@ -136,6 +136,19 @@ remaps, but replaces any existing caps lock mapping.
 
 The remap is removed on quit, Ctrl+C, SIGTERM (including `brew services stop`),
 closing the terminal (SIGHUP), logout, and `make uninstall`.
+
+## Limitations
+
+- Password fields, the lock screen and Terminal's Secure Keyboard Entry hide
+  key events from event taps. There caps lock does nothing, and caps lock
+  cannot be toggled until you leave that context.
+- The remap is system-wide: while hyperkey runs, other logged-in users and
+  the login window also get caps lock -> F18, so caps lock does nothing for
+  them.
+- Any key that sends F18 (keyboards with F13-F24, macro pads) also acts as
+  hyper.
+- macOS can drop `hidutil` remaps when keyboards disconnect. hyperkey checks
+  when a keyboard connects and after wake, and re-applies the remap if needed.
 
 ## Troubleshooting
 

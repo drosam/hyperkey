@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import IOKit.hid
 import IOKit.hidsystem
 
 setvbuf(stdout, nil, _IONBF, 0) // unbuffered so logs appear immediately when piped to a file
@@ -198,6 +199,40 @@ func createTap() -> CFMachPort? {
     )
 }
 
+// hidutil remaps can be dropped when keyboards come and go (Apple TN2450) and possibly on wake.
+var remapCheckPending = false
+var keyboardMonitor: IOHIDManager?
+
+func scheduleRemapCheck() {
+    guard remapInstalled, !remapCheckPending else { return }
+    remapCheckPending = true
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { // coalesce bursts of device events
+        remapCheckPending = false
+        let current = currentKeyMapping()
+        guard !current.contains(hyperRemap) else { return }
+        print("caps lock remap was lost, re-applying")
+        if !setKeyMapping(withHyperRemap(current)) {
+            printError("Failed to re-apply the caps lock remap with hidutil")
+        }
+    }
+}
+
+// Matching callbacks need no IOHIDManagerOpen, so no Input Monitoring permission.
+func watchForLostRemap() {
+    let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
+    IOHIDManagerSetDeviceMatching(manager, [
+        kIOHIDDeviceUsagePageKey: kHIDPage_GenericDesktop,
+        kIOHIDDeviceUsageKey: kHIDUsage_GD_Keyboard,
+    ] as CFDictionary)
+    IOHIDManagerRegisterDeviceMatchingCallback(manager, { _, _, _, _ in scheduleRemapCheck() }, nil)
+    IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+    keyboardMonitor = manager
+
+    NSWorkspace.shared.notificationCenter.addObserver(
+        forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+    ) { _ in scheduleRemapCheck() }
+}
+
 // The remap goes in only once the tap exists, so a missing permission never touches hidutil.
 func start(with newTap: CFMachPort) {
     guard installRemap() else {
@@ -205,6 +240,7 @@ func start(with newTap: CFMachPort) {
         exit(1) // nonzero so launchd retries
     }
     remapInstalled = true
+    watchForLostRemap()
     tap = newTap
     let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, newTap, 0)
     CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
