@@ -6,25 +6,30 @@ import IOKit.hidsystem
 
 setvbuf(stdout, nil, _IONBF, 0) // unbuffered so logs appear immediately when piped to a file
 
-let arguments = CommandLine.arguments.dropFirst()
+let usage = """
+usage: hyperkey [--verbose] [--clear-remap] [-v | --version] [-h | --help]
 
-if arguments.contains("--version") || arguments.contains("-v") {
+Hold caps lock for ⇧⌃⌥⌘, double-tap it alone to toggle caps lock.
+Requires Accessibility permission. Quit via the ✦ menu bar icon.
+--clear-remap removes a leftover caps lock -> F18 remap and exits.
+"""
+
+let command = parseCommand(Array(CommandLine.arguments.dropFirst()))
+switch command {
+case .version:
     print("hyperkey \(hyperkeyVersion)")
     exit(0)
-}
-
-if arguments.contains("--help") || arguments.contains("-h") {
-    print("""
-    usage: hyperkey [--verbose] [--version] [--help] [--clear-remap]
-
-    Hold caps lock for ⇧⌃⌥⌘, double-tap it alone to toggle caps lock.
-    Requires Accessibility permission. Quit via the ✦ menu bar icon.
-    --clear-remap removes a leftover caps lock -> F18 remap and exits.
-    """)
+case .help:
+    print(usage)
     exit(0)
+case .invalid(let argument):
+    printError("hyperkey: unknown option \(argument)\n\(usage)")
+    exit(2)
+case .clearRemap, .run:
+    break
 }
 
-let verbose = arguments.contains("--verbose")
+let verbose = command == .run(verbose: true)
 
 func logv(_ message: String) {
     if verbose { print(message) }
@@ -82,7 +87,7 @@ func removeRemap() -> Bool {
     return true
 }
 
-if arguments.contains("--clear-remap") {
+if command == .clearRemap {
     exit(removeRemap() ? 0 : 1)
 }
 

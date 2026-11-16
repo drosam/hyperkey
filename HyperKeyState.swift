@@ -65,6 +65,25 @@ struct HyperKeyState {
     }
 }
 
+enum Command: Equatable {
+    case version
+    case help
+    case clearRemap
+    case run(verbose: Bool)
+    case invalid(String)
+}
+
+/// Parses arguments (without the program name). Any unknown argument is rejected,
+/// so a typo never starts the remap.
+func parseCommand(_ arguments: [String]) -> Command {
+    let known: Set = ["--version", "-v", "--help", "-h", "--clear-remap", "--verbose"]
+    if let unknown = arguments.first(where: { !known.contains($0) }) { return .invalid(unknown) }
+    if arguments.contains("--version") || arguments.contains("-v") { return .version }
+    if arguments.contains("--help") || arguments.contains("-h") { return .help }
+    if arguments.contains("--clear-remap") { return .clearRemap }
+    return .run(verbose: arguments.contains("--verbose"))
+}
+
 let capsLockUsage = 0x7_0000_0039 // HID usage: keyboard caps lock
 let f18Usage = 0x7_0000_006D      // HID usage: keyboard F18
 

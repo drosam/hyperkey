@@ -179,5 +179,17 @@ checkEqual(
 )
 print("\(failures == mappingFailuresBefore ? "ok  " : "FAIL") UserKeyMapping merge and parsing")
 
+let commandFailuresBefore = failures
+checkEqual(parseCommand([]), .run(verbose: false), "no arguments runs")
+checkEqual(parseCommand(["--verbose"]), .run(verbose: true), "--verbose runs verbose")
+checkEqual(parseCommand(["-v"]), .version, "-v is version")
+checkEqual(parseCommand(["--verbose", "--version"]), .version, "version wins over run flags")
+checkEqual(parseCommand(["-h"]), .help, "-h is help")
+checkEqual(parseCommand(["--clear-remap"]), .clearRemap, "--clear-remap")
+checkEqual(parseCommand(["--verbos"]), .invalid("--verbos"), "typo is rejected")
+checkEqual(parseCommand(["--verbose", "-V"]), .invalid("-V"), "unknown flag after a valid one is rejected")
+checkEqual(parseCommand(["--version", "extra"]), .invalid("extra"), "unknown argument rejected even with --version")
+print("\(failures == commandFailuresBefore ? "ok  " : "FAIL") command-line parsing")
+
 print("\(checks) checks, \(failures) failures")
 exit(failures == 0 ? 0 : 1)

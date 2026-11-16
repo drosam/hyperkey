@@ -22,7 +22,7 @@ Guidance for coding agents working in this repository.
 ## Layout
 
 - `main.swift`: runtime glue (CLI flags, `hidutil`, event tap, IOKit, menu bar).
-- `HyperKeyState.swift`: pure key state machine. All hold/tap/double-tap logic lives here.
+- `HyperKeyState.swift`: pure, tested logic. All hold/tap/double-tap logic lives here, plus `UserKeyMapping` merge/parse and command-line parsing.
 - `Tests/main.swift`: dependency-free assert runner for the state machine.
 - `Makefile`: build, sign, test, dist, install/uninstall LaunchAgent. Version comes from `git describe` or `VERSION=`.
 - `.github/workflows/ci.yml`: tests, universal build checks, gitleaks.
