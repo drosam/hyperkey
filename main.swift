@@ -35,6 +35,11 @@ func logv(_ message: String) {
 // and we intercept F18 (which nothing else uses) as plain keyDown/keyUp.
 let f18Keycode: Int64 = 79 // macOS virtual keycode for F18
 
+func printError(_ message: String) {
+    FileHandle.standardError.write("\(message)\n".data(using: .utf8)!)
+}
+
+/// Runs hidutil and returns its stdout, or nil if it could not run or exited non-zero.
 func hidutil(_ arguments: [String]) -> String? {
     let p = Process()
     let output = Pipe()
@@ -44,6 +49,7 @@ func hidutil(_ arguments: [String]) -> String? {
     guard (try? p.run()) != nil else { return nil }
     let data = output.fileHandleForReading.readDataToEndOfFile()
     p.waitUntilExit()
+    guard p.terminationStatus == 0 else { return nil }
     return String(decoding: data, as: UTF8.self)
 }
 
@@ -52,27 +58,31 @@ func currentKeyMapping() -> [KeyMapping] {
     guard let output = hidutil(["property", "--get", "UserKeyMapping"]),
           let mappings = parseUserKeyMapping(output)
     else {
-        FileHandle.standardError.write("Could not read hidutil UserKeyMapping; other remaps will be cleared\n".data(using: .utf8)!)
+        printError("Could not read hidutil UserKeyMapping; other remaps will be cleared")
         return []
     }
     return mappings
 }
 
-func setKeyMapping(_ mappings: [KeyMapping]) {
-    _ = hidutil(["property", "--set", userKeyMappingJSON(mappings)])
+func setKeyMapping(_ mappings: [KeyMapping]) -> Bool {
+    hidutil(["property", "--set", userKeyMappingJSON(mappings)]) != nil
 }
 
-func installRemap() {
+func installRemap() -> Bool {
     setKeyMapping(withHyperRemap(currentKeyMapping()))
 }
 
-func removeRemap() {
-    setKeyMapping(withoutHyperRemap(currentKeyMapping()))
+@discardableResult
+func removeRemap() -> Bool {
+    guard setKeyMapping(withoutHyperRemap(currentKeyMapping())) else {
+        printError("Failed to remove the caps lock remap with hidutil")
+        return false
+    }
+    return true
 }
 
 if arguments.contains("--clear-remap") {
-    removeRemap()
-    exit(0)
+    exit(removeRemap() ? 0 : 1)
 }
 
 /// The only exit path once the remap is installed.
@@ -102,7 +112,7 @@ func toggleCapsLock() {
     defer { IOServiceClose(connect) }
 
     var state = false
-    IOHIDGetModifierLockState(connect, Int32(kIOHIDCapsLockState), &state)
+    guard IOHIDGetModifierLockState(connect, Int32(kIOHIDCapsLockState), &state) == KERN_SUCCESS else { return }
     IOHIDSetModifierLockState(connect, Int32(kIOHIDCapsLockState), !state)
 }
 
@@ -165,7 +175,10 @@ func callback(
     }
 }
 
-installRemap()
+guard installRemap() else {
+    printError("Failed to remap caps lock to F18 with hidutil")
+    exit(1) // nonzero so launchd retries
+}
 
 tap = CGEvent.tapCreate(
     tap: .cghidEventTap,            // lowest userspace level, before window server dispatch
