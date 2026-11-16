@@ -31,8 +31,13 @@ case .clearRemap, .run:
 
 let verbose = command == .run(verbose: true)
 
-func logv(_ message: String) {
-    if verbose { print(message) }
+// Writes happen off the tap callback, so a stalled stdout reader cannot block it.
+let logQueue = DispatchQueue(label: "hyperkey.log")
+
+func logv(_ message: @autoclosure () -> String) {
+    guard verbose else { return }
+    let line = message()
+    logQueue.async { print(line) }
 }
 
 // Caps lock's toggle (state + LED) happens inside the HID driver, below any event
