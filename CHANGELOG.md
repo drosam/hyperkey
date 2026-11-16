@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--clear-remap` flag to remove a leftover caps lock remap.
+
+### Fixed
+
+- Keep other `hidutil` key remaps instead of replacing the whole `UserKeyMapping` table on start, quit and `make uninstall`.
+
 ## [0.1.0] - 2026-11-15
 
 ### Added

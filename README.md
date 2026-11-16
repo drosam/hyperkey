@@ -110,6 +110,7 @@ hyperkey            # run in the foreground
 hyperkey --verbose  # log keycodes (not text) for debugging
 hyperkey --version
 hyperkey --help
+hyperkey --clear-remap  # remove a leftover caps lock remap and exit
 ```
 
 Quit from the ✦ menu or with Ctrl+C. Both restore normal caps lock. Under
@@ -129,6 +130,10 @@ event tap, so swallowing its events doesn't neutralize it. Instead:
    state is flipped directly through IOKit (`IOHIDSetModifierLockState`),
    since it can't be toggled by posting events.
 
+The `UserKeyMapping` table is system-wide and shared by all users on the Mac.
+hyperkey adds its caps lock entry to it and keeps your other `hidutil`
+remaps, but replaces any existing caps lock mapping.
+
 The remap is removed on quit, Ctrl+C, SIGTERM (including `brew services stop`),
 and `make uninstall`.
 
@@ -145,8 +150,12 @@ Logs: `$(brew --prefix)/var/log/hyperkey.log` (Homebrew) or
 crashed and left the remap behind. Clear it:
 
 ```sh
-hidutil property --set '{"UserKeyMapping":[]}'
+hyperkey --clear-remap
 ```
+
+With hyperkey already uninstalled, use
+`hidutil property --set '{"UserKeyMapping":[]}'`, which clears all `hidutil`
+remaps.
 
 **Shortcuts fire twice or behave oddly.** Make sure only one hyperkey runs
 (`pgrep -l hyperkey`) and that no other remapper (Karabiner-Elements, etc.)

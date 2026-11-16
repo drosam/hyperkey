@@ -14,10 +14,11 @@ if arguments.contains("--version") || arguments.contains("-v") {
 
 if arguments.contains("--help") || arguments.contains("-h") {
     print("""
-    usage: hyperkey [--verbose] [--version] [--help]
+    usage: hyperkey [--verbose] [--version] [--help] [--clear-remap]
 
     Hold caps lock for ⇧⌃⌥⌘, double-tap it alone to toggle caps lock.
     Requires Accessibility permission. Quit via the ✦ menu bar icon.
+    --clear-remap removes a leftover caps lock -> F18 remap and exits.
     """)
     exit(0)
 }
@@ -32,25 +33,46 @@ func logv(_ message: String) {
 // tap — swallowing its flagsChanged event doesn't stop it. So instead we remap
 // caps lock -> F18 in the driver itself via hidutil: no caps state ever toggles,
 // and we intercept F18 (which nothing else uses) as plain keyDown/keyUp.
-let capsLockUsage = 0x7_0000_0039 // HID usage: keyboard caps lock
-let f18Usage = 0x7_0000_006D      // HID usage: keyboard F18
-let f18Keycode: Int64 = 79        // macOS virtual keycode for F18
+let f18Keycode: Int64 = 79 // macOS virtual keycode for F18
 
-func hidutil(mapping: String) {
+func hidutil(_ arguments: [String]) -> String? {
     let p = Process()
+    let output = Pipe()
     p.executableURL = URL(fileURLWithPath: "/usr/bin/hidutil")
-    p.arguments = ["property", "--set", "{\"UserKeyMapping\":[\(mapping)]}"]
-    p.standardOutput = FileHandle.nullDevice
-    try? p.run()
+    p.arguments = arguments
+    p.standardOutput = output
+    guard (try? p.run()) != nil else { return nil }
+    let data = output.fileHandleForReading.readDataToEndOfFile()
     p.waitUntilExit()
+    return String(decoding: data, as: UTF8.self)
+}
+
+// The table is system-wide and `--set` replaces all of it, so merge with other remaps.
+func currentKeyMapping() -> [KeyMapping] {
+    guard let output = hidutil(["property", "--get", "UserKeyMapping"]),
+          let mappings = parseUserKeyMapping(output)
+    else {
+        FileHandle.standardError.write("Could not read hidutil UserKeyMapping; other remaps will be cleared\n".data(using: .utf8)!)
+        return []
+    }
+    return mappings
+}
+
+func setKeyMapping(_ mappings: [KeyMapping]) {
+    _ = hidutil(["property", "--set", userKeyMappingJSON(mappings)])
 }
 
 func installRemap() {
-    hidutil(mapping: "{\"HIDKeyboardModifierMappingSrc\":\(capsLockUsage),\"HIDKeyboardModifierMappingDst\":\(f18Usage)}")
+    setKeyMapping(withHyperRemap(currentKeyMapping()))
 }
 
 func removeRemap() {
-    hidutil(mapping: "")
+    setKeyMapping(withoutHyperRemap(currentKeyMapping()))
+}
+
+if arguments.contains("--clear-remap") {
+    removeRemap()
+    exit(0)
 }
 
 // Restore normal caps lock when killed (Ctrl+C / pkill)

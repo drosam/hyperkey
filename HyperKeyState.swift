@@ -53,3 +53,54 @@ struct HyperKeyState {
         }
     }
 }
+
+let capsLockUsage = 0x7_0000_0039 // HID usage: keyboard caps lock
+let f18Usage = 0x7_0000_006D      // HID usage: keyboard F18
+
+/// One entry of the system-wide `hidutil` `UserKeyMapping` table, as HID usages.
+struct KeyMapping: Equatable {
+    let src: Int
+    let dst: Int
+}
+
+let hyperRemap = KeyMapping(src: capsLockUsage, dst: f18Usage)
+
+/// Adds caps lock -> F18, replacing any other caps lock mapping and keeping the rest.
+func withHyperRemap(_ mappings: [KeyMapping]) -> [KeyMapping] {
+    mappings.filter { $0.src != capsLockUsage } + [hyperRemap]
+}
+
+func withoutHyperRemap(_ mappings: [KeyMapping]) -> [KeyMapping] {
+    mappings.filter { $0 != hyperRemap }
+}
+
+/// Parses `hidutil property --get UserKeyMapping` output (OpenStep plist or `(null)`).
+/// Returns nil when the output is not a mapping table.
+func parseUserKeyMapping(_ output: String) -> [KeyMapping]? {
+    let text = output.trimmingCharacters(in: .whitespacesAndNewlines)
+    if text == "(null)" { return [] }
+    guard let plist = try? PropertyListSerialization.propertyList(from: Data(text.utf8), format: nil),
+          let entries = plist as? [[String: Any]]
+    else { return nil }
+
+    func usage(_ value: Any?) -> Int? {
+        if let number = value as? NSNumber { return number.intValue }
+        return (value as? String).flatMap { Int($0) }
+    }
+    var mappings: [KeyMapping] = []
+    for entry in entries {
+        guard let src = usage(entry["HIDKeyboardModifierMappingSrc"]),
+              let dst = usage(entry["HIDKeyboardModifierMappingDst"])
+        else { return nil }
+        mappings.append(KeyMapping(src: src, dst: dst))
+    }
+    return mappings
+}
+
+/// JSON for `hidutil property --set`, which replaces the whole table.
+func userKeyMappingJSON(_ mappings: [KeyMapping]) -> String {
+    let entries = mappings.map {
+        "{\"HIDKeyboardModifierMappingSrc\":\($0.src),\"HIDKeyboardModifierMappingDst\":\($0.dst)}"
+    }
+    return "{\"UserKeyMapping\":[\(entries.joined(separator: ","))]}"
+}

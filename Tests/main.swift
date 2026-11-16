@@ -98,5 +98,44 @@ test("key up without key down while held still stamps") { s in
     check(s.handle(.hyperUp, at: 0.25), .swallowAndToggleCapsLock, "key up alone does not mark used")
 }
 
+func checkEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String, line: Int = #line) {
+    checks += 1
+    if actual != expected {
+        failures += 1
+        print("FAIL line \(line): \(message) - expected \(expected), got \(actual)")
+    }
+}
+
+let backtickSwap = KeyMapping(src: 0x7_0000_0064, dst: 0x7_0000_0035)
+let capsToEscape = KeyMapping(src: capsLockUsage, dst: 0x7_0000_0029)
+
+let mappingFailuresBefore = failures
+checkEqual(parseUserKeyMapping("(null)\n"), [], "null output parses as empty")
+checkEqual(parseUserKeyMapping("""
+(
+        {
+        HIDKeyboardModifierMappingDst = 30064771125;
+        HIDKeyboardModifierMappingSrc = 30064771172;
+    },
+        {
+        HIDKeyboardModifierMappingDst = 30064771181;
+        HIDKeyboardModifierMappingSrc = 30064771129;
+    }
+)
+
+"""), [backtickSwap, hyperRemap], "hidutil --get output parses")
+checkEqual(parseUserKeyMapping("garbage {"), nil, "unparseable output is nil")
+checkEqual(withHyperRemap([backtickSwap]), [backtickSwap, hyperRemap], "install keeps other mappings")
+checkEqual(withHyperRemap([capsToEscape, backtickSwap]), [backtickSwap, hyperRemap], "install replaces other caps lock mapping")
+checkEqual(withHyperRemap([hyperRemap]), [hyperRemap], "install does not duplicate leftover remap")
+checkEqual(withoutHyperRemap([backtickSwap, hyperRemap]), [backtickSwap], "remove keeps other mappings")
+checkEqual(userKeyMappingJSON([]), "{\"UserKeyMapping\":[]}", "empty table JSON")
+checkEqual(
+    userKeyMappingJSON([hyperRemap]),
+    "{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\":30064771129,\"HIDKeyboardModifierMappingDst\":30064771181}]}",
+    "table JSON"
+)
+print("\(failures == mappingFailuresBefore ? "ok  " : "FAIL") UserKeyMapping merge and parsing")
+
 print("\(checks) checks, \(failures) failures")
 exit(failures == 0 ? 0 : 1)

@@ -100,8 +100,13 @@ install: $(BUILD)/hyperkey
 
 uninstall:
 	-launchctl bootout gui/$(UID)/$(LABEL) 2>/dev/null
+	@# Old binaries ignore unknown flags and would start, so check --help first.
+	@if [ -x $(BIN) ] && $(BIN) --help | grep -q -- --clear-remap; then \
+		$(BIN) --clear-remap; \
+	else \
+		hidutil property --set '{"UserKeyMapping":[]}' >/dev/null; \
+	fi
 	rm -f $(BIN) $(PLIST)
-	hidutil property --set '{"UserKeyMapping":[]}' >/dev/null
 
 clean:
 	rm -rf $(BUILD) hyperkey

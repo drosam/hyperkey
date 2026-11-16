@@ -21,7 +21,9 @@ running. That is why it needs Accessibility permission. By design it:
 - never sends anything over the network;
 - never writes key events anywhere unless you run it with `--verbose`, which
   prints keycodes (not text) to stdout;
-- changes only the `hidutil` caps lock -> F18 mapping, and clears it on exit.
+- adds only a caps lock -> F18 entry to the system-wide `hidutil`
+  `UserKeyMapping` table (shared by all users), keeping other entries except an
+  existing caps lock mapping, and removes that entry on exit.
 
 Relevant reports include anything that breaks these guarantees, a tampered
 release artifact, or a weakness in the release pipeline.
