@@ -37,6 +37,7 @@ Guidance for coding agents working in this repository.
 - Do not commit, push, tag, install, uninstall, or launch the app unless asked.
 - Keep `README.md`, `CONTRIBUTING.md`, `SECURITY.md` and `CHANGELOG.md` (`Unreleased`) current when user-facing behavior changes.
 - Pin GitHub Actions by full commit SHA with a version comment; keep workflow permissions least-privilege.
+- Use only GitHub-owned actions (`actions/*`); download other tools in a `run` step with a pinned version and sha256 (see gitleaks in `ci.yml`). Dependabot does not update these.
 
 ## Validation
 
