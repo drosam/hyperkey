@@ -85,8 +85,8 @@ permission for the hyperkey binary:
 
 System Settings -> Privacy & Security -> Accessibility -> enable `hyperkey`.
 
-Until granted, hyperkey exits and the LaunchAgent retries every ~10 s; once
-granted it starts on its own.
+Until granted, hyperkey waits without remapping caps lock and checks again
+every 2 s; once granted it starts on its own.
 
 **After every upgrade or rebuild**, macOS sees a new binary. If hyperkey
 stops reacting, quit it from the ✦ menu, remove it from the Accessibility

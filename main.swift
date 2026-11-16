@@ -85,9 +85,11 @@ if arguments.contains("--clear-remap") {
     exit(removeRemap() ? 0 : 1)
 }
 
+var remapInstalled = false
+
 /// The only exit path once the remap is installed.
 func shutdown(_ status: Int32 = 0) -> Never {
-    removeRemap()
+    if remapInstalled { removeRemap() }
     exit(status)
 }
 
@@ -175,40 +177,52 @@ func callback(
     }
 }
 
-guard installRemap() else {
-    printError("Failed to remap caps lock to F18 with hidutil")
-    exit(1) // nonzero so launchd retries
+func createTap() -> CFMachPort? {
+    CGEvent.tapCreate(
+        tap: .cghidEventTap,            // lowest userspace level, before window server dispatch
+        place: .headInsertEventTap,
+        options: .defaultTap,           // active tap: can modify/swallow events
+        eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue) |
+                          CGEventMask(1 << CGEventType.keyUp.rawValue),
+        callback: callback,
+        userInfo: nil
+    )
 }
 
-tap = CGEvent.tapCreate(
-    tap: .cghidEventTap,            // lowest userspace level, before window server dispatch
-    place: .headInsertEventTap,
-    options: .defaultTap,           // active tap: can modify/swallow events
-    eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue) |
-                      CGEventMask(1 << CGEventType.keyUp.rawValue),
-    callback: callback,
-    userInfo: nil
-)
+// The remap goes in only once the tap exists, so a missing permission never touches hidutil.
+func start(with newTap: CFMachPort) {
+    guard installRemap() else {
+        printError("Failed to remap caps lock to F18 with hidutil")
+        exit(1) // nonzero so launchd retries
+    }
+    remapInstalled = true
+    tap = newTap
+    let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, newTap, 0)
+    CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+    CGEvent.tapEnable(tap: newTap, enable: true)
+    print("hyperkey running — hold caps lock for ⇧⌃⌥⌘, double-tap alone to toggle caps. Quit via ✦ menu.")
+}
 
-guard let tap else {
-    let interactive = isatty(STDIN_FILENO) != 0
-    if interactive {
+if let newTap = createTap() {
+    start(with: newTap)
+} else {
+    if isatty(STDIN_FILENO) != 0 {
         // Running from a terminal: trigger the system Accessibility prompt once.
         let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
     }
-    FileHandle.standardError.write("""
-    Failed to create event tap.
-    Grant Accessibility permission to this binary:
+    printError("""
+    Failed to create event tap. Waiting for Accessibility permission:
     System Settings > Privacy & Security > Accessibility
-
-    """.data(using: .utf8)!)
-    shutdown(1)
+    """)
+    // Wait in-process instead of exiting, so launchd does not respawn and log every 10 s.
+    let permissionTimer = Timer(timeInterval: 2, repeats: true) { timer in
+        guard AXIsProcessTrusted(), let newTap = createTap() else { return }
+        timer.invalidate()
+        start(with: newTap)
+    }
+    RunLoop.main.add(permissionTimer, forMode: .common)
 }
-
-let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
-CGEvent.tapEnable(tap: tap, enable: true)
 
 // Menu bar icon so the process can be quit without a terminal. NSApp's run loop
 // is the same main run loop the tap source was added to.
@@ -240,5 +254,4 @@ quitItem.target = appDelegate
 menu.addItem(quitItem)
 statusItem.menu = menu
 
-print("hyperkey running — hold caps lock for ⇧⌃⌥⌘, double-tap alone to toggle caps. Quit via ✦ menu.")
 app.run()
