@@ -50,7 +50,7 @@ Guidance for coding agents working in this repository.
 ## Code notes
 
 - Accessibility permission is tied to the binary's code signature. `make build` signs with the `SIGN_ID` keychain identity (default `hyperkey-dev`) when present, else ad-hoc. Releases are ad-hoc (`SIGN_ID=-`); no signing secrets exist in CI.
-- SIGINT, SIGTERM, menu quit, and uninstall clear the `hidutil` remap; SIGKILL cannot.
+- SIGINT, SIGTERM, SIGHUP, menu quit, app termination (logout) and uninstall clear the `hidutil` remap through `shutdown()`; SIGKILL cannot. Signals are handled by Dispatch sources on the main queue, never in a raw signal handler.
 - Minimum macOS is 13 (`MACOS_MIN` in `Makefile`).
 
 ## Git safety

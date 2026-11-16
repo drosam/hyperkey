@@ -75,9 +75,20 @@ if arguments.contains("--clear-remap") {
     exit(0)
 }
 
-// Restore normal caps lock when killed (Ctrl+C / pkill)
-signal(SIGINT) { _ in removeRemap(); exit(0) }
-signal(SIGTERM) { _ in removeRemap(); exit(0) }
+/// The only exit path once the remap is installed.
+func shutdown(_ status: Int32 = 0) -> Never {
+    removeRemap()
+    exit(status)
+}
+
+// Cleanup spawns processes, which is unsafe in a signal handler; handle signals on the main queue.
+let signalSources = [SIGINT, SIGTERM, SIGHUP].map { sig -> DispatchSourceSignal in
+    signal(sig, SIG_IGN)
+    let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+    source.setEventHandler { shutdown() }
+    source.resume()
+    return source
+}
 
 // Caps lock state lives in the HID driver, so a double-tap toggle can't be done
 // by posting events — we flip the lock state (and LED) directly through IOKit.
@@ -145,7 +156,6 @@ func callback(
     }
 }
 
-removeRemap()
 installRemap()
 
 tap = CGEvent.tapCreate(
@@ -159,7 +169,6 @@ tap = CGEvent.tapCreate(
 )
 
 guard let tap else {
-    removeRemap()
     let interactive = isatty(STDIN_FILENO) != 0
     if interactive {
         // Running from a terminal: trigger the system Accessibility prompt once.
@@ -172,7 +181,7 @@ guard let tap else {
     System Settings > Privacy & Security > Accessibility
 
     """.data(using: .utf8)!)
-    exit(1)
+    shutdown(1)
 }
 
 let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
@@ -184,13 +193,18 @@ CGEvent.tapEnable(tap: tap, enable: true)
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory) // menu bar only, no Dock icon
 
-final class MenuHandler: NSObject {
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    // Apple-event quits (logout, Activity Monitor) go through terminate:.
+    func applicationWillTerminate(_ notification: Notification) {
+        shutdown()
+    }
+
     @objc func quit() {
-        removeRemap()
-        exit(0)
+        shutdown()
     }
 }
-let menuHandler = MenuHandler()
+let appDelegate = AppDelegate()
+app.delegate = appDelegate
 
 let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 statusItem.button?.title = "✦"
@@ -199,8 +213,8 @@ let versionItem = NSMenuItem(title: "hyperkey \(hyperkeyVersion)", action: nil, 
 versionItem.isEnabled = false
 menu.addItem(versionItem)
 menu.addItem(.separator())
-let quitItem = NSMenuItem(title: "Quit Hyperkey", action: #selector(MenuHandler.quit), keyEquivalent: "")
-quitItem.target = menuHandler
+let quitItem = NSMenuItem(title: "Quit Hyperkey", action: #selector(AppDelegate.quit), keyEquivalent: "")
+quitItem.target = appDelegate
 menu.addItem(quitItem)
 statusItem.menu = menu
 

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Keep other `hidutil` key remaps instead of replacing the whole `UserKeyMapping` table on start, quit and `make uninstall`.
+- Clear the caps lock remap safely on SIGINT and SIGTERM (no work inside a signal handler), and also when the terminal closes (SIGHUP) or on logout.
 
 ## [0.1.0] - 2026-11-15
 

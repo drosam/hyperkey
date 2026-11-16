@@ -135,7 +135,7 @@ hyperkey adds its caps lock entry to it and keeps your other `hidutil`
 remaps, but replaces any existing caps lock mapping.
 
 The remap is removed on quit, Ctrl+C, SIGTERM (including `brew services stop`),
-and `make uninstall`.
+closing the terminal (SIGHUP), logout, and `make uninstall`.
 
 ## Troubleshooting
 
