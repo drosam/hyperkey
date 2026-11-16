@@ -60,6 +60,13 @@ test("slow double tap does not toggle, slow tap starts new window") { s in
     check(s.handle(.hyperUp, at: 0.65), .swallowAndToggleCapsLock, "quick tap after slow tap toggles")
 }
 
+test("time going backwards does not toggle") { s in
+    _ = s.handle(.hyperDown, at: 99.95)
+    _ = s.handle(.hyperUp, at: 100)
+    _ = s.handle(.hyperDown, at: 99.85)
+    check(s.handle(.hyperUp, at: 99.9), .swallow, "negative delta")
+}
+
 test("tap, combo, tap does not toggle") { s in
     _ = s.handle(.hyperDown, at: 0)
     _ = s.handle(.hyperUp, at: 0.05)

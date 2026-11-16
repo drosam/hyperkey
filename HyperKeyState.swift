@@ -44,7 +44,7 @@ struct HyperKeyState {
                 lastTapAloneTime = nil
                 return .swallow
             }
-            if let lastTap = lastTapAloneTime, time - lastTap <= doubleTapInterval {
+            if let lastTap = lastTapAloneTime, (0...doubleTapInterval).contains(time - lastTap) {
                 lastTapAloneTime = nil
                 return .swallowAndToggleCapsLock
             }

@@ -141,7 +141,8 @@ func callback(
 
     let wasHyperDown = hyperState.isHyperDown
     let wasHyperUsed = hyperState.hyperUsed
-    let action = hyperState.handle(input, at: Date.timeIntervalSinceReferenceDate)
+    // Monotonic: wall-clock steps (NTP, manual changes) must not fake a double tap.
+    let action = hyperState.handle(input, at: ProcessInfo.processInfo.systemUptime)
 
     switch action {
     case .pass:
