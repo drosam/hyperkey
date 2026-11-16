@@ -85,6 +85,15 @@ if arguments.contains("--clear-remap") {
     exit(removeRemap() ? 0 : 1)
 }
 
+// A second instance would clear the shared remap on quit and break the first one.
+// The kernel drops the lock when the process exits, even on SIGKILL.
+let lockPath = (NSTemporaryDirectory() as NSString).appendingPathComponent("hyperkey.lock")
+let lockFD = open(lockPath, O_RDONLY | O_CREAT, 0o600)
+if lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
+    printError("hyperkey is already running")
+    exit(1)
+}
+
 var remapInstalled = false
 
 /// The only exit path once the remap is installed.

@@ -42,8 +42,9 @@ hidutil property --set '{"UserKeyMapping":[]}'
 
 ## Developing while installed via Homebrew
 
-Only one hyperkey may run at a time. Stop the Homebrew service while testing a
-local build, then start it again.
+Only one hyperkey may run at a time; a second copy exits with
+`hyperkey is already running` (0.1.0 does not check). Stop the
+Homebrew service while testing a local build, then start it again.
 
 Quick test:
 

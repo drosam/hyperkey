@@ -157,9 +157,11 @@ With hyperkey already uninstalled, use
 `hidutil property --set '{"UserKeyMapping":[]}'`, which clears all `hidutil`
 remaps.
 
-**Shortcuts fire twice or behave oddly.** Make sure only one hyperkey runs
-(`pgrep -l hyperkey`) and that no other remapper (Karabiner-Elements, etc.)
-also maps caps lock.
+**`hyperkey is already running`.** Only one hyperkey runs per user. Quit the
+other copy (`pgrep -l hyperkey`), for example with `brew services stop hyperkey`.
+
+**Shortcuts behave oddly.** Make sure no other remapper (Karabiner-Elements,
+etc.) also maps caps lock.
 
 The `hidutil` remap is not persistent: a reboot clears it, and hyperkey sets
 it again at launch.

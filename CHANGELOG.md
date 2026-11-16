@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `--clear-remap` flag to remove a leftover caps lock remap.
+- Refuse to start a second instance for the same user; quitting either copy used to remove the caps lock remap for both.
 
 ### Fixed
 
