@@ -51,11 +51,13 @@ test("double tap exactly at interval boundary toggles") { s in
     check(s.handle(.hyperUp, at: 1.5), .swallowAndToggleCapsLock, "boundary inclusive")
 }
 
-test("slow double tap does not toggle") { s in
+test("slow double tap does not toggle, slow tap starts new window") { s in
     _ = s.handle(.hyperDown, at: 0)
     _ = s.handle(.hyperUp, at: 0.05)
     _ = s.handle(.hyperDown, at: 0.4)
     check(s.handle(.hyperUp, at: 0.5), .swallow, "too slow")
+    _ = s.handle(.hyperDown, at: 0.6)
+    check(s.handle(.hyperUp, at: 0.65), .swallowAndToggleCapsLock, "quick tap after slow tap toggles")
 }
 
 test("tap, combo, tap does not toggle") { s in
