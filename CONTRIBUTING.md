@@ -13,8 +13,11 @@ so the approach can be discussed.
 
 ## Requirements
 
-- macOS 13 or later
-- Xcode Command Line Tools (`xcode-select --install`)
+- macOS 14.5 or later to build (the binary runs on macOS 13)
+- Xcode Command Line Tools 16 or later for Swift 6 (`xcode-select --install`)
+
+The build uses Swift 6 language mode with warnings as errors, and tests use
+the same flags.
 
 ## Commands
 

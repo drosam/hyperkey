@@ -71,7 +71,8 @@ cd hyperkey
 make install
 ```
 
-Requires Xcode Command Line Tools (`xcode-select --install`). This builds
+Requires Xcode Command Line Tools 16 or later (Swift 6, macOS 14.5+;
+`xcode-select --install`). On older macOS, install with Homebrew instead. This builds
 `build/hyperkey`, installs it to `~/.local/bin/hyperkey` and loads a
 LaunchAgent (`com.drosam.hyperkey`) that starts it at login. Do not use this
 and `brew services` at the same time; `make install` refuses if the brew

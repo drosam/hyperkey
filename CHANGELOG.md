@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--clear-remap` flag to remove a leftover caps lock remap.
 - Refuse to start a second instance for the same user; quitting either copy used to remove the caps lock remap for both.
 
+### Changed
+
+- Building from source needs Swift 6 (Xcode Command Line Tools 16, macOS 14.5+); the binary still runs on macOS 13.
+
 ### Fixed
 
 - Keep other `hidutil` key remaps instead of replacing the whole `UserKeyMapping` table on start, quit and `make uninstall`.

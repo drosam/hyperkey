@@ -15,7 +15,8 @@ SIGN_ID ?= hyperkey-dev
 
 BUILD = build
 SOURCES = main.swift HyperKeyState.swift
-SWIFTFLAGS = -O
+SWIFT_CHECKS = -swift-version 6 -warnings-as-errors
+SWIFTFLAGS = -O $(SWIFT_CHECKS)
 DIST_NAME = hyperkey-$(VERSION)
 DIST_ZIP = $(BUILD)/$(DIST_NAME).zip
 
@@ -77,7 +78,7 @@ universal: $(addprefix $(BUILD)/hyperkey-,$(ARCHS))
 
 test:
 	@mkdir -p $(BUILD)
-	swiftc -target $(ARCH)-apple-macos$(MACOS_MIN) HyperKeyState.swift Tests/main.swift -o $(BUILD)/tests
+	swiftc $(SWIFT_CHECKS) -target $(ARCH)-apple-macos$(MACOS_MIN) HyperKeyState.swift Tests/main.swift -o $(BUILD)/tests
 	$(BUILD)/tests
 
 dist: universal

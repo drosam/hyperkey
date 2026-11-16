@@ -98,6 +98,7 @@ if lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
 var remapInstalled = false
 
 /// The only exit path once the remap is installed.
+@MainActor
 func shutdown(_ status: Int32 = 0) -> Never {
     if remapInstalled { removeRemap() }
     exit(status)
@@ -133,19 +134,28 @@ var hyperState = HyperKeyState()
 
 var tap: CFMachPort?
 
+// The tap source is on the main run loop, so the C callback always runs on the main actor.
 func callback(
     proxy: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
     refcon: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
+    nonisolated(unsafe) let event = event // CGEvent is not Sendable; only used on this thread
+    let pass = MainActor.assumeIsolated { handle(type: type, event: event) }
+    return pass ? Unmanaged.passUnretained(event) : nil
+}
+
+/// Returns whether to pass the event on.
+@MainActor
+func handle(type: CGEventType, event: CGEvent) -> Bool {
     // macOS disables the tap if the callback is ever too slow; re-enable and move on
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
         if let tap {
             CGEvent.tapEnable(tap: tap, enable: true)
         }
         hyperState.reset() // key events may have been missed while disabled
-        return Unmanaged.passUnretained(event)
+        return true
     }
 
     let keycode = event.getIntegerValueField(.keyboardEventKeycode)
@@ -168,22 +178,22 @@ func callback(
 
     switch action {
     case .pass:
-        return Unmanaged.passUnretained(event)
+        return true
     case .passWithHyper:
         event.flags.formUnion(hyperFlags)
         logv("hyper + keycode \(keycode)")
-        return Unmanaged.passUnretained(event)
+        return true
     case .swallow:
         if input == .hyperDown {
             if !wasHyperDown { logv("hyper down") }
         } else if wasHyperDown {
             logv(wasHyperUsed ? "hyper up" : "hyper up — tap alone")
         }
-        return nil
+        return false
     case .swallowAndToggleCapsLock:
         logv("hyper up — double tap, toggling caps lock")
         toggleCapsLock()
-        return nil
+        return false
     }
 }
 
@@ -203,6 +213,7 @@ func createTap() -> CFMachPort? {
 var remapCheckPending = false
 var keyboardMonitor: IOHIDManager?
 
+@MainActor
 func scheduleRemapCheck() {
     guard remapInstalled, !remapCheckPending else { return }
     remapCheckPending = true
@@ -218,22 +229,26 @@ func scheduleRemapCheck() {
 }
 
 // Matching callbacks need no IOHIDManagerOpen, so no Input Monitoring permission.
+@MainActor
 func watchForLostRemap() {
     let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
     IOHIDManagerSetDeviceMatching(manager, [
         kIOHIDDeviceUsagePageKey: kHIDPage_GenericDesktop,
         kIOHIDDeviceUsageKey: kHIDUsage_GD_Keyboard,
     ] as CFDictionary)
-    IOHIDManagerRegisterDeviceMatchingCallback(manager, { _, _, _, _ in scheduleRemapCheck() }, nil)
+    IOHIDManagerRegisterDeviceMatchingCallback(manager, { _, _, _, _ in
+        MainActor.assumeIsolated { scheduleRemapCheck() } // scheduled on the main run loop
+    }, nil)
     IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
     keyboardMonitor = manager
 
     NSWorkspace.shared.notificationCenter.addObserver(
         forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
-    ) { _ in scheduleRemapCheck() }
+    ) { _ in MainActor.assumeIsolated { scheduleRemapCheck() } }
 }
 
 // The remap goes in only once the tap exists, so a missing permission never touches hidutil.
+@MainActor
 func start(with newTap: CFMachPort) {
     guard installRemap() else {
         printError("Failed to remap caps lock to F18 with hidutil")
@@ -253,7 +268,8 @@ if let newTap = createTap() {
 } else {
     if isatty(STDIN_FILENO) != 0 {
         // Running from a terminal: trigger the system Accessibility prompt once.
-        let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        // Value of kAXTrustedCheckOptionPrompt, which Swift 6 rejects as shared mutable state.
+        let promptKey = "AXTrustedCheckOptionPrompt"
         AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
     }
     printError("""
@@ -264,7 +280,7 @@ if let newTap = createTap() {
     let permissionTimer = Timer(timeInterval: 2, repeats: true) { timer in
         guard AXIsProcessTrusted(), let newTap = createTap() else { return }
         timer.invalidate()
-        start(with: newTap)
+        MainActor.assumeIsolated { start(with: newTap) } // timer is on the main run loop
     }
     RunLoop.main.add(permissionTimer, forMode: .common)
 }
@@ -274,6 +290,7 @@ if let newTap = createTap() {
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory) // menu bar only, no Dock icon
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     // Apple-event quits (logout, Activity Monitor) go through terminate:.
     func applicationWillTerminate(_ notification: Notification) {

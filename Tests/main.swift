@@ -3,6 +3,7 @@ import Foundation
 var failures = 0
 var checks = 0
 
+@MainActor
 func check(_ actual: KeyAction, _ expected: KeyAction, _ message: String, line: Int = #line) {
     checks += 1
     if actual != expected {
@@ -11,6 +12,7 @@ func check(_ actual: KeyAction, _ expected: KeyAction, _ message: String, line: 
     }
 }
 
+@MainActor
 func test(_ name: String, _ body: (inout HyperKeyState) -> Void) {
     var state = HyperKeyState()
     let before = failures
@@ -137,6 +139,7 @@ test("stray hyper up does not arm double tap") { s in
     check(s.handle(.hyperUp, at: 0.15), .swallow, "next tap does not toggle")
 }
 
+@MainActor
 func checkEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String, line: Int = #line) {
     checks += 1
     if actual != expected {

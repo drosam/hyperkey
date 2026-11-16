@@ -52,7 +52,8 @@ Guidance for coding agents working in this repository.
 
 - Accessibility permission is tied to the binary's code signature. `make build` signs with the `SIGN_ID` keychain identity (default `hyperkey-dev`) when present, else ad-hoc. Releases are ad-hoc (`SIGN_ID=-`); no signing secrets exist in CI.
 - SIGINT, SIGTERM, SIGHUP, menu quit, app termination (logout) and uninstall clear the `hidutil` remap through `shutdown()`; SIGKILL cannot. Signals are handled by Dispatch sources on the main queue, never in a raw signal handler.
-- Minimum macOS is 13 (`MACOS_MIN` in `Makefile`).
+- Minimum macOS is 13 (`MACOS_MIN` in `Makefile`) to run; building needs Swift 6 (CLT/Xcode 16, macOS 14.5+).
+- Build and tests use Swift 6 language mode with `-warnings-as-errors` (`SWIFT_CHECKS`). Event-tap, IOHID and timer callbacks run on the main run loop and enter the main actor with `MainActor.assumeIsolated`.
 
 ## Git safety
 
