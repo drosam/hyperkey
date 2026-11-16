@@ -122,6 +122,7 @@ func callback(
         if let tap {
             CGEvent.tapEnable(tap: tap, enable: true)
         }
+        hyperState.reset() // key events may have been missed while disabled
         return Unmanaged.passUnretained(event)
     }
 
@@ -130,6 +131,13 @@ func callback(
     let input: KeyInput = keycode == f18Keycode
         ? (isKeyDown ? .hyperDown : .hyperUp)
         : (isKeyDown ? .otherKeyDown : .otherKeyUp)
+
+    // Secure input (password fields, lock screen) hides key events from taps, so F18 up can be lost.
+    if input == .otherKeyDown, hyperState.isHyperDown,
+       !CGEventSource.keyState(.hidSystemState, key: CGKeyCode(f18Keycode)) {
+        logv("hyper up was missed, resetting")
+        hyperState.reset()
+    }
 
     let wasHyperDown = hyperState.isHyperDown
     let wasHyperUsed = hyperState.hyperUsed
@@ -145,7 +153,7 @@ func callback(
     case .swallow:
         if input == .hyperDown {
             if !wasHyperDown { logv("hyper down") }
-        } else {
+        } else if wasHyperDown {
             logv(wasHyperUsed ? "hyper up" : "hyper up — tap alone")
         }
         return nil

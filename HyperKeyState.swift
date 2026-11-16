@@ -21,6 +21,13 @@ struct HyperKeyState {
     private(set) var hyperUsed = false
     private var lastTapAloneTime: TimeInterval?
 
+    /// Forgets all key state, for when events may have been missed (tap disabled, lost key up).
+    mutating func reset() {
+        isHyperDown = false
+        hyperUsed = false
+        lastTapAloneTime = nil
+    }
+
     mutating func handle(_ input: KeyInput, at time: TimeInterval) -> KeyAction {
         switch input {
         case .hyperDown:
@@ -31,6 +38,7 @@ struct HyperKeyState {
             return .swallow
 
         case .hyperUp:
+            guard isHyperDown else { return .swallow } // stray up after a reset is not a tap
             isHyperDown = false
             if hyperUsed {
                 lastTapAloneTime = nil

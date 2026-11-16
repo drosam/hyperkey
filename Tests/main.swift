@@ -98,6 +98,27 @@ test("key up without key down while held still stamps") { s in
     check(s.handle(.hyperUp, at: 0.25), .swallowAndToggleCapsLock, "key up alone does not mark used")
 }
 
+test("reset after lost hyper up stops stamping") { s in
+    _ = s.handle(.hyperDown, at: 0)
+    s.reset()
+    check(s.handle(.otherKeyDown, at: 0.05), .pass, "key down not stamped")
+    check(s.handle(.otherKeyUp, at: 0.1), .pass, "key up not stamped")
+}
+
+test("reset clears the double tap window") { s in
+    _ = s.handle(.hyperDown, at: 0)
+    _ = s.handle(.hyperUp, at: 0.05)
+    s.reset()
+    _ = s.handle(.hyperDown, at: 0.1)
+    check(s.handle(.hyperUp, at: 0.15), .swallow, "first tap after reset does not toggle")
+}
+
+test("stray hyper up does not arm double tap") { s in
+    check(s.handle(.hyperUp, at: 0), .swallow, "stray up swallowed")
+    _ = s.handle(.hyperDown, at: 0.1)
+    check(s.handle(.hyperUp, at: 0.15), .swallow, "next tap does not toggle")
+}
+
 func checkEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String, line: Int = #line) {
     checks += 1
     if actual != expected {
