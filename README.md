@@ -7,6 +7,22 @@ uses by default, so you get a whole free layer for shortcuts (Raycast,
 skhd, Hammerspoon, app shortcuts, ...). Double-tap caps lock to get normal
 caps lock back.
 
+## Why hyperkey
+
+A hyper key usually comes bundled inside a much bigger tool:
+
+- **Raycast** - a full launcher; the hyper key is one setting among hundreds.
+- **Karabiner-Elements** - a powerful remapping engine with a virtual keyboard
+  driver and a background daemon.
+- **BetterTouchTool** - a paid suite for gestures, mouse, Touch Bar and keyboard.
+- **Hammerspoon** - a Lua automation framework you script yourself.
+
+They are great if you already use them for everything else. If all you want is
+caps lock as a hyper key, they are a lot to install, run and grant permissions
+to. hyperkey does that one job and nothing more: a single ~170 KB binary, no
+driver, no configuration, no network access, and source short enough to read in
+a few minutes.
+
 ## Highlights
 
 - **Hold caps lock + key** -> that key with ⇧⌃⌥⌘.
