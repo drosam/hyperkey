@@ -55,7 +55,8 @@ Download `hyperkey-X.Y.Z.zip` and `SHA256SUMS.txt` from the
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt
-gh attestation verify hyperkey-X.Y.Z.zip --repo drosam/hyperkey
+gh attestation verify hyperkey-X.Y.Z.zip --repo drosam/hyperkey \
+  --signer-workflow drosam/hyperkey/.github/workflows/release.yml
 ```
 
 The attestation proves the zip was built by this repo's release workflow.

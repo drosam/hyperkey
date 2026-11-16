@@ -39,5 +39,9 @@ Each release ships `SHA256SUMS.txt` and a GitHub build provenance attestation:
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt
-gh attestation verify hyperkey-X.Y.Z.zip --repo drosam/hyperkey
+gh attestation verify hyperkey-X.Y.Z.zip --repo drosam/hyperkey \
+  --signer-workflow drosam/hyperkey/.github/workflows/release.yml
 ```
+
+`--signer-workflow` rejects attestations made by any other workflow in the
+repository. Releases after 0.1.0 also attest `SHA256SUMS.txt`.

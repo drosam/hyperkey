@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Sign the binary with the hardened runtime so injected libraries (`DYLD_INSERT_LIBRARIES`) cannot reuse its Accessibility permission.
+- Attest `SHA256SUMS.txt` as well as the zip, and pin attestation verification to the release workflow (`--signer-workflow`).
 
 ## [0.1.0] - 2026-11-15
 
