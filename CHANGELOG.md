@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Report `hidutil` failures and exit with an error when the caps lock remap cannot be installed, instead of running without it; a failed caps lock state read no longer forces caps lock on.
 - Wait in-process for Accessibility permission instead of exiting, so the LaunchAgent no longer restarts hyperkey every 10 s, flips the caps lock remap and grows the log until permission is granted.
 - Re-apply the caps lock remap if macOS drops it when a keyboard connects or after wake.
+- A key pressed between two caps lock taps now cancels the double tap, as documented.
 
 ### Security
 

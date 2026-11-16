@@ -52,7 +52,10 @@ struct HyperKeyState {
             return .swallow
 
         case .otherKeyDown:
-            guard isHyperDown else { return .pass }
+            guard isHyperDown else {
+                lastTapAloneTime = nil // a key between taps means they are not a double tap alone
+                return .pass
+            }
             hyperUsed = true
             return .passWithHyper
 
