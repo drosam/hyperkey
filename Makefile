@@ -47,10 +47,10 @@ export PLIST_CONTENT
 
 define sign
 	@if [ "$(SIGN_ID)" != "-" ] && security find-identity -p codesigning | grep -qF "\"$(SIGN_ID)\""; then \
-		codesign --force --sign "$(SIGN_ID)" --identifier $(LABEL) $(1) && \
+		codesign --force --sign "$(SIGN_ID)" --options runtime --identifier $(LABEL) $(1) && \
 		echo "signed with $(SIGN_ID): Accessibility survives rebuilds"; \
 	else \
-		codesign --force --sign - --identifier $(LABEL) $(1) && \
+		codesign --force --sign - --options runtime --identifier $(LABEL) $(1) && \
 		echo "ad-hoc signed: Accessibility must be re-granted after each rebuild (see CONTRIBUTING.md)"; \
 	fi
 endef

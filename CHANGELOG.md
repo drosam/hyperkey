@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clear the caps lock remap safely on SIGINT and SIGTERM (no work inside a signal handler), and also when the terminal closes (SIGHUP) or on logout.
 - Stop adding ⇧⌃⌥⌘ to every key after a caps lock release was missed (password prompt, lock screen, disabled event tap), and ignore stray releases for double-tap detection.
 
+### Security
+
+- Sign the binary with the hardened runtime so injected libraries (`DYLD_INSERT_LIBRARIES`) cannot reuse its Accessibility permission.
+
 ## [0.1.0] - 2026-11-15
 
 ### Added

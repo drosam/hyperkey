@@ -25,6 +25,10 @@ running. That is why it needs Accessibility permission. By design it:
   `UserKeyMapping` table (shared by all users), keeping other entries except an
   existing caps lock mapping, and removes that entry on exit.
 
+The binary is signed with the hardened runtime, so dyld ignores
+`DYLD_INSERT_LIBRARIES` and other code cannot be injected into it to reuse its
+Accessibility permission.
+
 Relevant reports include anything that breaks these guarantees, a tampered
 release artifact, or a weakness in the release pipeline.
 
