@@ -113,7 +113,13 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::notice::Release $TAG already exists; skipping creation"
+            # A rebuilt zip has a new hash; bumping the tap with it would break brew install.
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p SHA256SUMS.txt -O published-sums.txt
+            if ! cmp -s published-sums.txt dist/build/SHA256SUMS.txt; then
+              echo "::error::Release $TAG exists with different assets; re-run failed jobs only, not all jobs"
+              exit 1
+            fi
+            echo "::notice::Release $TAG already exists with matching assets; skipping creation"
             exit 0
           fi
           flags=()
