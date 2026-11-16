@@ -97,6 +97,8 @@ verify:
 	codesign --verify --strict --verbose $(BUILD)/hyperkey
 	@codesign -d -vv $(BUILD)/hyperkey 2>&1 | grep -q 'flags=.*runtime' || { echo "error: hardened runtime missing"; exit 1; }
 	test "$$($(BUILD)/hyperkey --version)" = "hyperkey $(VERSION)"
+	@arch -x86_64 /usr/bin/true 2>/dev/null || { echo "error: running the x86_64 slice needs Rosetta: softwareupdate --install-rosetta --agree-to-license"; exit 1; }
+	test "$$(arch -x86_64 $(BUILD)/hyperkey --version)" = "hyperkey $(VERSION)"
 	cd $(BUILD) && shasum -a 256 -c SHA256SUMS.txt
 
 install: $(BUILD)/hyperkey

@@ -53,8 +53,17 @@ jobs:
             exit 1
           fi
 
+      - name: Toolchain
+        run: swiftc --version
+
+      - name: Rosetta (runs the x86_64 slice)
+        run: arch -x86_64 /usr/bin/true 2>/dev/null || sudo softwareupdate --install-rosetta --agree-to-license
+
       - name: Unit tests
         run: make test
+
+      - name: Unit tests (x86_64)
+        run: make test ARCH=x86_64
 
       - name: Build universal release
         run: make dist SIGN_ID=- VERSION="$VERSION"

@@ -100,8 +100,9 @@ or share its private key.
 
 1. Move `Unreleased` entries to a new `## [X.Y.Z] - YYYY-MM-DD` section in
    `CHANGELOG.md` and merge to `main`.
-2. Check the release build locally: `make dist verify SIGN_ID=- VERSION=X.Y.Z`.
-   Then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+2. Check the release build locally: `make dist verify SIGN_ID=- VERSION=X.Y.Z`
+   (runs the x86_64 slice, so Apple Silicon needs Rosetta). Then tag and push:
+   `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. Approve the `release` environment deployment in GitHub Actions. The
    workflow builds, attests, publishes the release and bumps the Homebrew tap.
 4. Update locally: `brew update && brew upgrade hyperkey`,
