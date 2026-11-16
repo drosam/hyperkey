@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Re-apply the caps lock remap if macOS drops it when a keyboard connects or after wake.
 - A key pressed between two caps lock taps now cancels the double tap, as documented.
 - `--verbose` output piped to a reader that stops reading (a paused pager) no longer stalls key handling and disables hyper.
+- `make uninstall` leaves the caps lock remap alone while the Homebrew service runs; `make build` falls back to ad-hoc signing when the `hyperkey-dev` certificate is expired or duplicated; local builds report versions without the tag's `v`.
 
 ### Security
 

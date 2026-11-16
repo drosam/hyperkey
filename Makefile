@@ -6,7 +6,11 @@ PLIST = $(HOME)/Library/LaunchAgents/$(LABEL).plist
 LOG = $(HOME)/Library/Logs/hyperkey.log
 UID := $(shell id -u)
 
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+# Tags are vX.Y.Z; versions are X.Y.Z, as in releases.
+VERSION ?= $(patsubst v%,%,$(shell git describe --tags --always --dirty 2>/dev/null || echo dev))
+ifneq ($(findstring ",$(VERSION))$(findstring \,$(VERSION)),)
+$(error VERSION must not contain " or \)
+endif
 MACOS_MIN ?= 13.0
 ARCH ?= $(shell uname -m)
 ARCHS = arm64 x86_64
@@ -48,8 +52,9 @@ endef
 export PLIST_CONTENT
 
 define sign
-	@if [ "$(SIGN_ID)" != "-" ] && security find-identity -p codesigning | grep -qF "\"$(SIGN_ID)\""; then \
-		codesign --force --sign "$(SIGN_ID)" --options runtime --identifier $(LABEL) $(1) && \
+	@# -v lists only valid identities; an expired or duplicate one falls back to ad-hoc.
+	@if [ "$(SIGN_ID)" != "-" ] && security find-identity -v -p codesigning | grep -qF "\"$(SIGN_ID)\"" && \
+		codesign --force --sign "$(SIGN_ID)" --options runtime --identifier $(LABEL) $(1); then \
 		echo "signed with $(SIGN_ID): Accessibility survives rebuilds"; \
 	else \
 		codesign --force --sign - --options runtime --identifier $(LABEL) $(1) && \
@@ -112,13 +117,19 @@ install: $(BUILD)/hyperkey
 	xattr -c $(BIN)
 	echo "$$PLIST_CONTENT" > $(PLIST)
 	launchctl bootstrap gui/$(UID) $(PLIST)
-	@echo "If hyperkey does not react after an ad-hoc rebuild, toggle it off and on in the screen opening now."
-	open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+	@if codesign -dv $(BIN) 2>&1 | grep -q 'Signature=adhoc'; then \
+		echo "Ad-hoc build: if hyperkey does not react, toggle it off and on in the screen opening now."; \
+		open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"; \
+	else \
+		echo "Signed with $(SIGN_ID): on a first install, enable hyperkey in System Settings -> Privacy & Security -> Accessibility."; \
+	fi
 
 uninstall:
 	-launchctl bootout gui/$(UID)/$(LABEL) 2>/dev/null
 	@# Old binaries ignore unknown flags and would start, so check --help first.
-	@if [ -x $(BIN) ] && $(BIN) --help | grep -q -- --clear-remap; then \
+	@if launchctl print gui/$(UID)/$(BREW_LABEL) >/dev/null 2>&1; then \
+		echo "hyperkey runs via brew services; leaving its caps lock remap in place"; \
+	elif [ -x $(BIN) ] && $(BIN) --help | grep -q -- --clear-remap; then \
 		$(BIN) --clear-remap; \
 	else \
 		hidutil property --set '{"UserKeyMapping":[]}' >/dev/null; \
@@ -126,7 +137,7 @@ uninstall:
 	rm -f $(BIN) $(PLIST)
 
 clean:
-	rm -rf $(BUILD) hyperkey
+	rm -rf $(BUILD)
 
 FORCE:
 

@@ -321,7 +321,6 @@ let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variable
 statusItem.button?.title = "✦"
 let menu = NSMenu()
 let versionItem = NSMenuItem(title: "hyperkey \(hyperkeyVersion)", action: nil, keyEquivalent: "")
-versionItem.isEnabled = false
 menu.addItem(versionItem)
 menu.addItem(.separator())
 let quitItem = NSMenuItem(title: "Quit Hyperkey", action: #selector(AppDelegate.quit), keyEquivalent: "")

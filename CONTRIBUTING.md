@@ -82,8 +82,12 @@ builds get a new identity on every build, so permission resets after each
 1. Open Keychain Access -> Keychain Access menu -> Certificate Assistant ->
    Create a Certificate...
 2. Name: `hyperkey-dev`, Identity Type: Self Signed Root, Certificate Type:
-   Code Signing.
+   Code Signing. Check "Let me override defaults" and set Validity Period to
+   3650 days; the default is 365.
 3. `make install` now signs with it automatically. Grant Accessibility once.
+
+An expired or duplicate `hyperkey-dev` certificate is skipped and the build
+falls back to ad-hoc signing; delete the old one in Keychain Access.
 
 Use another certificate name with `make install SIGN_ID="My Cert"`, or force
 ad-hoc with `SIGN_ID=-`. The certificate stays on your machine; never commit
