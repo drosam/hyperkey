@@ -89,13 +89,16 @@ Until granted, hyperkey exits and the LaunchAgent retries every ~10 s; once
 granted it starts on its own.
 
 **After every upgrade or rebuild**, macOS sees a new binary. If hyperkey
-stops reacting, remove it from the Accessibility list (or toggle it off and
-on), then restart it:
+stops reacting, quit it from the ✦ menu, remove it from the Accessibility
+list (or toggle it off and on), then restart it:
 
 ```sh
 brew services restart hyperkey                        # Homebrew
 launchctl kickstart -k gui/$(id -u)/com.drosam.hyperkey  # make install
 ```
+
+Always quit hyperkey before changing its Accessibility entry. Revoking the
+permission while it runs can freeze keyboard and mouse input until reboot.
 
 Release builds are ad-hoc signed (no paid Apple Developer ID), which is why
 the grant does not carry over between versions.

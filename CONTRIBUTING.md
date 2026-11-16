@@ -99,5 +99,7 @@ or share its private key.
 2. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. Approve the `release` environment deployment in GitHub Actions. The
    workflow builds, attests, publishes the release and bumps the Homebrew tap.
-4. Update locally: `brew update && brew upgrade hyperkey`, toggle hyperkey off
-   and on in Accessibility, then `brew services restart hyperkey`.
+4. Update locally: `brew update && brew upgrade hyperkey`,
+   `brew services stop hyperkey`, toggle hyperkey off and on in Accessibility,
+   then `brew services start hyperkey`. Never change the Accessibility entry
+   while hyperkey runs; it can freeze all input.
