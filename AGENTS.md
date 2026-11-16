@@ -12,6 +12,7 @@ Guidance for coding agents working in this repository.
 - Unit tests: `make test`
 - Universal build: `make universal` (x86_64 may need full Xcode)
 - Release archive: `make dist` -> `build/hyperkey-$(VERSION).zip` + `build/SHA256SUMS.txt`
+- Release checks (CI uses this): `make dist verify SIGN_ID=- VERSION=X.Y.Z`
 - Run manually: `make build && build/hyperkey`
 - Run with verbose key logging: `make build && build/hyperkey --verbose`
 - Install LaunchAgent: `make install`

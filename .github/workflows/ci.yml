@@ -30,15 +30,7 @@ jobs:
         run: make dist SIGN_ID=- VERSION=0.0.0-ci
 
       - name: Verify binary
-        run: |
-          set -euo pipefail
-          archs=$(lipo -archs build/hyperkey)
-          for required in arm64 x86_64; do
-            grep -qw "$required" <<<"$archs" || { echo "::error::missing $required slice (have: $archs)"; exit 1; }
-          done
-          codesign --verify --strict --verbose build/hyperkey
-          test "$(build/hyperkey --version)" = "hyperkey 0.0.0-ci"
-          (cd build && shasum -a 256 -c SHA256SUMS.txt)
+        run: make verify VERSION=0.0.0-ci
 
   secret-scan:
     runs-on: ubuntu-latest

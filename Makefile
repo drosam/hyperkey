@@ -9,6 +9,7 @@ UID := $(shell id -u)
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 MACOS_MIN ?= 13.0
 ARCH ?= $(shell uname -m)
+ARCHS = arm64 x86_64
 # Self-signed keychain cert name; keeps Accessibility across rebuilds. "-" forces ad-hoc.
 SIGN_ID ?= hyperkey-dev
 
@@ -62,14 +63,16 @@ $(BUILD)/Version.swift: FORCE
 	@echo 'let hyperkeyVersion = "$(VERSION)"' > $@.tmp
 	@if cmp -s $@.tmp $@; then rm $@.tmp; else mv $@.tmp $@; fi
 
-$(BUILD)/hyperkey: $(SOURCES) $(BUILD)/Version.swift
-	swiftc $(SWIFTFLAGS) -target $(ARCH)-apple-macos$(MACOS_MIN) $(SOURCES) $(BUILD)/Version.swift -o $@
+# Unsigned per-architecture slices; static pattern so it never matches the dist zip.
+$(addprefix $(BUILD)/hyperkey-,$(ARCHS)): $(BUILD)/hyperkey-%: $(SOURCES) $(BUILD)/Version.swift
+	swiftc $(SWIFTFLAGS) -target $*-apple-macos$(MACOS_MIN) $(SOURCES) $(BUILD)/Version.swift -o $@
+
+$(BUILD)/hyperkey: $(BUILD)/hyperkey-$(ARCH)
+	cp $< $@
 	$(call sign,$@)
 
-universal: $(SOURCES) $(BUILD)/Version.swift
-	swiftc $(SWIFTFLAGS) -target arm64-apple-macos$(MACOS_MIN) $(SOURCES) $(BUILD)/Version.swift -o $(BUILD)/hyperkey-arm64
-	swiftc $(SWIFTFLAGS) -target x86_64-apple-macos$(MACOS_MIN) $(SOURCES) $(BUILD)/Version.swift -o $(BUILD)/hyperkey-x86_64
-	lipo -create -output $(BUILD)/hyperkey $(BUILD)/hyperkey-arm64 $(BUILD)/hyperkey-x86_64
+universal: $(addprefix $(BUILD)/hyperkey-,$(ARCHS))
+	lipo -create -output $(BUILD)/hyperkey $^
 	$(call sign,$(BUILD)/hyperkey)
 
 test:
@@ -83,6 +86,17 @@ dist: universal
 	cp $(BUILD)/hyperkey LICENSE README.md $(BUILD)/$(DIST_NAME)/
 	ditto -c -k --norsrc --noextattr --noqtn --keepParent $(BUILD)/$(DIST_NAME) $(DIST_ZIP)
 	cd $(BUILD) && shasum -a 256 $(DIST_NAME).zip > SHA256SUMS.txt
+
+# Release checks, run by CI and before tagging: make dist verify VERSION=X.Y.Z
+verify:
+	@archs="$$(lipo -archs $(BUILD)/hyperkey)"; \
+	for required in $(ARCHS); do \
+		echo "$$archs" | grep -qw "$$required" || { echo "error: missing $$required slice (have: $$archs)"; exit 1; }; \
+	done
+	codesign --verify --strict --verbose $(BUILD)/hyperkey
+	@codesign -d -vv $(BUILD)/hyperkey 2>&1 | grep -q 'flags=.*runtime' || { echo "error: hardened runtime missing"; exit 1; }
+	test "$$($(BUILD)/hyperkey --version)" = "hyperkey $(VERSION)"
+	cd $(BUILD) && shasum -a 256 -c SHA256SUMS.txt
 
 install: $(BUILD)/hyperkey
 	@if launchctl print gui/$(UID)/$(BREW_LABEL) >/dev/null 2>&1; then \
@@ -113,4 +127,4 @@ clean:
 
 FORCE:
 
-.PHONY: build universal test dist install uninstall clean FORCE
+.PHONY: build universal test dist verify install uninstall clean FORCE

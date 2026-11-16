@@ -60,15 +60,7 @@ jobs:
         run: make dist SIGN_ID=- VERSION="$VERSION"
 
       - name: Verify binary
-        run: |
-          set -euo pipefail
-          archs=$(lipo -archs build/hyperkey)
-          for required in arm64 x86_64; do
-            grep -qw "$required" <<<"$archs" || { echo "::error::missing $required slice (have: $archs)"; exit 1; }
-          done
-          codesign --verify --strict --verbose build/hyperkey
-          test "$(build/hyperkey --version)" = "hyperkey $VERSION"
-          (cd build && shasum -a 256 -c SHA256SUMS.txt)
+        run: make verify VERSION="$VERSION"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
