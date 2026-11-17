@@ -21,6 +21,9 @@ struct HyperKeyState {
     private(set) var hyperUsed = false
     private var lastTapAloneTime: TimeInterval?
 
+    /// True when another key would change no state and pass untouched, so callers may skip `handle`.
+    var isIdle: Bool { !isHyperDown && lastTapAloneTime == nil }
+
     /// Forgets all key state, for when events may have been missed (tap disabled, lost key up).
     mutating func reset() {
         isHyperDown = false

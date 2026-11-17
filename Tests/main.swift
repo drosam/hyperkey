@@ -140,6 +140,33 @@ test("stray hyper up does not arm double tap") { s in
 }
 
 @MainActor
+func checkIdle(_ state: HyperKeyState, _ expected: Bool, _ message: String, line: Int = #line) {
+    checks += 1
+    if state.isIdle != expected {
+        failures += 1
+        print("FAIL line \(line): \(message) - expected isIdle \(expected)")
+    }
+}
+
+test("idle only when other keys need no state machine") { s in
+    checkIdle(s, true, "fresh state")
+    _ = s.handle(.hyperDown, at: 0)
+    checkIdle(s, false, "hyper held")
+    _ = s.handle(.hyperUp, at: 0.05)
+    checkIdle(s, false, "double tap window armed")
+    _ = s.handle(.otherKeyDown, at: 0.1)
+    checkIdle(s, true, "other key closed the window")
+    _ = s.handle(.hyperDown, at: 0.2)
+    _ = s.handle(.otherKeyDown, at: 0.25)
+    _ = s.handle(.hyperUp, at: 0.3)
+    checkIdle(s, true, "combo release leaves no window")
+    _ = s.handle(.hyperDown, at: 0.4)
+    _ = s.handle(.hyperUp, at: 0.45)
+    s.reset()
+    checkIdle(s, true, "reset")
+}
+
+@MainActor
 func checkEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String, line: Int = #line) {
     checks += 1
     if actual != expected {

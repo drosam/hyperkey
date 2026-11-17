@@ -169,6 +169,8 @@ func handle(type: CGEventType, event: CGEvent) -> Bool {
     }
 
     let keycode = event.getIntegerValueField(.keyboardEventKeycode)
+    if keycode != f18Keycode && hyperState.isIdle { return true } // fast path for normal typing
+
     let isKeyDown = type == .keyDown
     let input: KeyInput = keycode == f18Keycode
         ? (isKeyDown ? .hyperDown : .hyperUp)
