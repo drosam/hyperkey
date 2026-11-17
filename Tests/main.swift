@@ -180,13 +180,15 @@ let capsToEscape = KeyMapping(src: capsLockUsage, dst: 0x7_0000_0029)
 
 let mappingFailuresBefore = failures
 let systemTable: NSArray = [
-    ["HIDKeyboardModifierMappingDst": NSNumber(value: 30064771125), "HIDKeyboardModifierMappingSrc": NSNumber(value: 30064771172)],
-    ["HIDKeyboardModifierMappingDst": NSNumber(value: 30064771181), "HIDKeyboardModifierMappingSrc": NSNumber(value: 30064771129)],
+    [mappingDstKey: NSNumber(value: 30064771125), mappingSrcKey: NSNumber(value: 30064771172)],
+    [mappingDstKey: NSNumber(value: 30064771181), mappingSrcKey: NSNumber(value: 30064771129)],
 ]
+checkEqual(mappingSrcKey, "HIDKeyboardModifierMappingSrc", "system src key name")
+checkEqual(mappingDstKey, "HIDKeyboardModifierMappingDst", "system dst key name")
 checkEqual(keyMappings(fromProperty: nil), [], "unset table is empty")
 checkEqual(keyMappings(fromProperty: systemTable), [backtickSwap, hyperRemap], "system property parses")
 checkEqual(keyMappings(fromProperty: "garbage" as NSString), nil, "non-table value is nil")
-checkEqual(keyMappings(fromProperty: [["HIDKeyboardModifierMappingSrc": 1]] as NSArray), nil, "entry missing dst is nil")
+checkEqual(keyMappings(fromProperty: [[mappingSrcKey: 1]] as NSArray), nil, "entry missing dst is nil")
 checkEqual(withHyperRemap([backtickSwap]), [backtickSwap, hyperRemap], "install keeps other mappings")
 checkEqual(withHyperRemap([capsToEscape, backtickSwap]), [backtickSwap, hyperRemap], "install replaces other caps lock mapping")
 checkEqual(withHyperRemap([hyperRemap]), [hyperRemap], "install does not duplicate leftover remap")
@@ -194,7 +196,7 @@ checkEqual(withoutHyperRemap([backtickSwap, hyperRemap]), [backtickSwap], "remov
 checkEqual(userKeyMappingProperty([]), [], "empty table property")
 checkEqual(
     userKeyMappingProperty([hyperRemap]),
-    [["HIDKeyboardModifierMappingSrc": 30064771129, "HIDKeyboardModifierMappingDst": 30064771181]],
+    [[mappingSrcKey: 30064771129, mappingDstKey: 30064771181]],
     "table property"
 )
 checkEqual(
