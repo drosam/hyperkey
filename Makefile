@@ -18,7 +18,7 @@ ARCHS = arm64 x86_64
 SIGN_ID ?= hyperkey-dev
 
 BUILD = build
-SOURCES = main.swift HyperKeyState.swift
+SOURCES = main.swift Remap.swift Tap.swift HyperKeyState.swift
 SWIFT_CHECKS = -swift-version 6 -warnings-as-errors
 SWIFTFLAGS = -O $(SWIFT_CHECKS)
 DIST_NAME = hyperkey-$(VERSION)

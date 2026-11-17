@@ -6,7 +6,8 @@ so the approach can be discussed.
 ## Project constraints
 
 - No dependencies, no package managers, no app bundle.
-- `main.swift` holds runtime glue (event tap, `UserKeyMapping` remap, IOKit, menu bar).
+- `main.swift` holds startup, shutdown and the menu bar; `Remap.swift` the
+  `UserKeyMapping` remap; `Tap.swift` the event tap and caps lock toggle.
 - `HyperKeyState.swift` holds the pure key state machine. Behavior changes
   belong here, with tests.
 - `Tests/main.swift` is a tiny assert runner compiled with `swiftc`.

@@ -21,7 +21,9 @@ Guidance for coding agents working in this repository.
 
 ## Layout
 
-- `main.swift`: runtime glue (CLI flags, `UserKeyMapping` remap, event tap, IOKit, menu bar).
+- `main.swift`: startup order (CLI flags, single-instance lock, signals, tap -> remap), shutdown and menu bar.
+- `Remap.swift`: caps lock -> F18 in `UserKeyMapping` via `IOHIDEventSystemClient`, plus the lost-remap watcher.
+- `Tap.swift`: event tap callback, F18 handling and the IOKit caps lock toggle.
 - `HyperKeyState.swift`: pure, tested logic. All hold/tap/double-tap logic lives here, plus `UserKeyMapping` merge/parse and command-line parsing.
 - `Tests/main.swift`: dependency-free assert runner for the state machine.
 - `Makefile`: build, sign, test, dist, install/uninstall LaunchAgent. Version comes from `git describe` or `VERSION=`.
@@ -30,7 +32,7 @@ Guidance for coding agents working in this repository.
 
 ## Workflow
 
-- Read `main.swift`, `HyperKeyState.swift` and `Makefile` before changing behavior.
+- Read `main.swift`, `Remap.swift`, `Tap.swift`, `HyperKeyState.swift` and `Makefile` before changing behavior.
 - Keep the project dependency-free: no packages, package managers or app bundles without approval.
 - Behavior changes go in `HyperKeyState.swift` with tests in `Tests/main.swift`.
 - Prefer small, focused edits.
