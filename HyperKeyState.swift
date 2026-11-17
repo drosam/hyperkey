@@ -10,15 +10,24 @@ enum KeyInput {
 enum KeyAction: Equatable {
     case pass
     case passWithHyper
-    case swallow
+    case swallow(SwallowReason)
     case swallowAndToggleCapsLock
+}
+
+/// Why a hyper key event was swallowed, for logging.
+enum SwallowReason: Equatable {
+    case hyperDown
+    case autorepeat
+    case comboRelease
+    case tapAlone
+    case strayHyperUp
 }
 
 /// Pure hyper key state machine: hold for hyper, double-tap alone to toggle caps lock.
 struct HyperKeyState {
     var doubleTapInterval: TimeInterval = 0.35
-    private(set) var isHyperDown = false
-    private(set) var hyperUsed = false
+    private var isHyperDown = false
+    private var hyperUsed = false
     private var lastTapAloneTime: TimeInterval?
 
     /// True when another key would change no state and pass untouched, so callers may skip `handle`.
@@ -34,25 +43,24 @@ struct HyperKeyState {
     mutating func handle(_ input: KeyInput, at time: TimeInterval) -> KeyAction {
         switch input {
         case .hyperDown:
-            if !isHyperDown { // ignore autorepeat, it would reset hyperUsed
-                isHyperDown = true
-                hyperUsed = false
-            }
-            return .swallow
+            guard !isHyperDown else { return .swallow(.autorepeat) } // would reset hyperUsed
+            isHyperDown = true
+            hyperUsed = false
+            return .swallow(.hyperDown)
 
         case .hyperUp:
-            guard isHyperDown else { return .swallow } // stray up after a reset is not a tap
+            guard isHyperDown else { return .swallow(.strayHyperUp) } // after a reset, not a tap
             isHyperDown = false
             if hyperUsed {
                 lastTapAloneTime = nil
-                return .swallow
+                return .swallow(.comboRelease)
             }
             if let lastTap = lastTapAloneTime, (0...doubleTapInterval).contains(time - lastTap) {
                 lastTapAloneTime = nil
                 return .swallowAndToggleCapsLock
             }
             lastTapAloneTime = time
-            return .swallow
+            return .swallow(.tapAlone)
 
         case .otherKeyDown:
             guard isHyperDown else {

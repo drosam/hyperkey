@@ -62,8 +62,6 @@ func handle(type: CGEventType, event: CGEvent) -> Bool {
         ? (isKeyDown ? .hyperDown : .hyperUp)
         : (isKeyDown ? .otherKeyDown : .otherKeyUp)
 
-    let wasHyperDown = hyperState.isHyperDown
-    let wasHyperUsed = hyperState.hyperUsed
     // Monotonic: wall-clock steps (NTP, manual changes) must not fake a double tap.
     let action = hyperState.handle(input, at: ProcessInfo.processInfo.systemUptime)
 
@@ -74,11 +72,12 @@ func handle(type: CGEventType, event: CGEvent) -> Bool {
         event.flags.formUnion(hyperFlags)
         logv("hyper + keycode \(keycode)")
         return true
-    case .swallow:
-        if input == .hyperDown {
-            if !wasHyperDown { logv("hyper down") }
-        } else if wasHyperDown {
-            logv(wasHyperUsed ? "hyper up" : "hyper up — tap alone")
+    case .swallow(let reason):
+        switch reason {
+        case .hyperDown: logv("hyper down")
+        case .comboRelease: logv("hyper up")
+        case .tapAlone: logv("hyper up — tap alone")
+        case .autorepeat, .strayHyperUp: break
         }
         return false
     case .swallowAndToggleCapsLock:

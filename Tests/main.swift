@@ -26,16 +26,16 @@ test("other keys pass through untouched without hyper") { s in
 }
 
 test("hold hyper + key stamps hyper on down and up") { s in
-    check(s.handle(.hyperDown, at: 0), .swallow, "hyper down swallowed")
+    check(s.handle(.hyperDown, at: 0), .swallow(.hyperDown), "hyper down swallowed")
     check(s.handle(.otherKeyDown, at: 0.05), .passWithHyper, "key down stamped")
     check(s.handle(.otherKeyUp, at: 0.1), .passWithHyper, "key up stamped")
-    check(s.handle(.hyperUp, at: 0.15), .swallow, "hyper up swallowed")
+    check(s.handle(.hyperUp, at: 0.15), .swallow(.comboRelease), "hyper up swallowed")
     check(s.handle(.otherKeyDown, at: 0.2), .pass, "after release no stamp")
 }
 
 test("single lone tap does not toggle") { s in
-    check(s.handle(.hyperDown, at: 0), .swallow, "down")
-    check(s.handle(.hyperUp, at: 0.05), .swallow, "up")
+    check(s.handle(.hyperDown, at: 0), .swallow(.hyperDown), "down")
+    check(s.handle(.hyperUp, at: 0.05), .swallow(.tapAlone), "up")
 }
 
 test("double lone tap within interval toggles caps lock") { s in
@@ -57,7 +57,7 @@ test("slow double tap does not toggle, slow tap starts new window") { s in
     _ = s.handle(.hyperDown, at: 0)
     _ = s.handle(.hyperUp, at: 0.05)
     _ = s.handle(.hyperDown, at: 0.4)
-    check(s.handle(.hyperUp, at: 0.5), .swallow, "too slow")
+    check(s.handle(.hyperUp, at: 0.5), .swallow(.tapAlone), "too slow")
     _ = s.handle(.hyperDown, at: 0.6)
     check(s.handle(.hyperUp, at: 0.65), .swallowAndToggleCapsLock, "quick tap after slow tap toggles")
 }
@@ -68,14 +68,14 @@ test("other key between lone taps cancels double tap") { s in
     check(s.handle(.otherKeyDown, at: 0.1), .pass, "unheld key passes")
     check(s.handle(.otherKeyUp, at: 0.12), .pass, "unheld key up passes")
     _ = s.handle(.hyperDown, at: 0.2)
-    check(s.handle(.hyperUp, at: 0.25), .swallow, "tap after other key does not toggle")
+    check(s.handle(.hyperUp, at: 0.25), .swallow(.tapAlone), "tap after other key does not toggle")
 }
 
 test("time going backwards does not toggle") { s in
     _ = s.handle(.hyperDown, at: 99.95)
     _ = s.handle(.hyperUp, at: 100)
     _ = s.handle(.hyperDown, at: 99.85)
-    check(s.handle(.hyperUp, at: 99.9), .swallow, "negative delta")
+    check(s.handle(.hyperUp, at: 99.9), .swallow(.tapAlone), "negative delta")
 }
 
 test("tap, combo, tap does not toggle") { s in
@@ -84,19 +84,19 @@ test("tap, combo, tap does not toggle") { s in
     _ = s.handle(.hyperDown, at: 0.1)
     _ = s.handle(.otherKeyDown, at: 0.12)
     _ = s.handle(.otherKeyUp, at: 0.14)
-    check(s.handle(.hyperUp, at: 0.16), .swallow, "combo release")
+    check(s.handle(.hyperUp, at: 0.16), .swallow(.comboRelease), "combo release")
     _ = s.handle(.hyperDown, at: 0.2)
-    check(s.handle(.hyperUp, at: 0.25), .swallow, "tap after combo starts fresh")
+    check(s.handle(.hyperUp, at: 0.25), .swallow(.tapAlone), "tap after combo starts fresh")
 }
 
 test("autorepeat hyper down does not reset used flag") { s in
     _ = s.handle(.hyperDown, at: 0)
     _ = s.handle(.otherKeyDown, at: 0.05)
-    check(s.handle(.hyperDown, at: 0.5), .swallow, "autorepeat swallowed")
-    check(s.handle(.hyperDown, at: 0.53), .swallow, "autorepeat swallowed")
+    check(s.handle(.hyperDown, at: 0.5), .swallow(.autorepeat), "autorepeat swallowed")
+    check(s.handle(.hyperDown, at: 0.53), .swallow(.autorepeat), "autorepeat swallowed")
     _ = s.handle(.hyperUp, at: 0.6)
     _ = s.handle(.hyperDown, at: 0.7)
-    check(s.handle(.hyperUp, at: 0.75), .swallow, "held combo is not a lone tap")
+    check(s.handle(.hyperUp, at: 0.75), .swallow(.tapAlone), "held combo is not a lone tap, so this is a first tap")
 }
 
 test("triple tap toggles once, third tap starts new window") { s in
@@ -105,7 +105,7 @@ test("triple tap toggles once, third tap starts new window") { s in
     _ = s.handle(.hyperDown, at: 0.1)
     check(s.handle(.hyperUp, at: 0.15), .swallowAndToggleCapsLock, "second tap toggles")
     _ = s.handle(.hyperDown, at: 0.2)
-    check(s.handle(.hyperUp, at: 0.25), .swallow, "third tap does not toggle")
+    check(s.handle(.hyperUp, at: 0.25), .swallow(.tapAlone), "third tap does not toggle")
     _ = s.handle(.hyperDown, at: 0.3)
     check(s.handle(.hyperUp, at: 0.35), .swallowAndToggleCapsLock, "fourth tap toggles")
 }
@@ -130,13 +130,13 @@ test("reset clears the double tap window") { s in
     _ = s.handle(.hyperUp, at: 0.05)
     s.reset()
     _ = s.handle(.hyperDown, at: 0.1)
-    check(s.handle(.hyperUp, at: 0.15), .swallow, "first tap after reset does not toggle")
+    check(s.handle(.hyperUp, at: 0.15), .swallow(.tapAlone), "first tap after reset does not toggle")
 }
 
 test("stray hyper up does not arm double tap") { s in
-    check(s.handle(.hyperUp, at: 0), .swallow, "stray up swallowed")
+    check(s.handle(.hyperUp, at: 0), .swallow(.strayHyperUp), "stray up swallowed")
     _ = s.handle(.hyperDown, at: 0.1)
-    check(s.handle(.hyperUp, at: 0.15), .swallow, "next tap does not toggle")
+    check(s.handle(.hyperUp, at: 0.15), .swallow(.tapAlone), "next tap does not toggle")
 }
 
 @MainActor
