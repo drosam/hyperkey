@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0-rc.1] - 2026-11-17
+## [0.2.0] - 2026-11-17
 
 ### Added
 
@@ -49,6 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Homebrew formula with `brew services` support.
 - Universal (arm64 + x86_64) release builds with SHA256 checksums and build provenance attestation.
 
-[Unreleased]: https://github.com/drosam/hyperkey/compare/v0.2.0-rc.1...HEAD
-[0.2.0-rc.1]: https://github.com/drosam/hyperkey/releases/tag/v0.2.0-rc.1
+[Unreleased]: https://github.com/drosam/hyperkey/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/drosam/hyperkey/releases/tag/v0.2.0
 [0.1.0]: https://github.com/drosam/hyperkey/releases/tag/v0.1.0
