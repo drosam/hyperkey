@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Keep other `hidutil` key remaps instead of replacing the whole `UserKeyMapping` table on start, quit and `make uninstall`.
 - Clear the caps lock remap safely on SIGINT and SIGTERM (no work inside a signal handler), and also when the terminal closes (SIGHUP) or on logout.
-- Stop adding ⇧⌃⌥⌘ to every key after a caps lock release was missed (password prompt, lock screen, disabled event tap), and ignore stray releases for double-tap detection.
+- Stop adding ⇧⌃⌥⌘ to every key after macOS disables and re-enables the event tap, and ignore stray caps lock releases for double-tap detection.
 - Time double taps with a monotonic clock so a system clock change cannot toggle caps lock on a single tap.
 - Report `hidutil` failures and exit with an error when the caps lock remap cannot be installed, instead of running without it; a failed caps lock state read no longer forces caps lock on.
 - Wait in-process for Accessibility permission instead of exiting, so the LaunchAgent no longer restarts hyperkey every 10 s, flips the caps lock remap and grows the log until permission is granted.

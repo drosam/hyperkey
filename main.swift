@@ -174,13 +174,6 @@ func handle(type: CGEventType, event: CGEvent) -> Bool {
         ? (isKeyDown ? .hyperDown : .hyperUp)
         : (isKeyDown ? .otherKeyDown : .otherKeyUp)
 
-    // Secure input (password fields, lock screen) hides key events from taps, so F18 up can be lost.
-    if input == .otherKeyDown, hyperState.isHyperDown,
-       !CGEventSource.keyState(.hidSystemState, key: CGKeyCode(f18Keycode)) {
-        logv("hyper up was missed, resetting")
-        hyperState.reset()
-    }
-
     let wasHyperDown = hyperState.isHyperDown
     let wasHyperUsed = hyperState.hyperUsed
     // Monotonic: wall-clock steps (NTP, manual changes) must not fake a double tap.

@@ -149,7 +149,8 @@ closing the terminal (SIGHUP), logout, and `make uninstall`.
 
 - Password fields, the lock screen and Terminal's Secure Keyboard Entry hide
   key events from event taps. There caps lock does nothing, and caps lock
-  cannot be toggled until you leave that context.
+  cannot be toggled until you leave that context. If you release caps lock
+  inside one, hyper can stay on afterwards; tap caps lock once to clear it.
 - The remap is system-wide: while hyperkey runs, other logged-in users and
   the login window also get caps lock -> F18, so caps lock does nothing for
   them.
