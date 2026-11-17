@@ -179,30 +179,28 @@ let backtickSwap = KeyMapping(src: 0x7_0000_0064, dst: 0x7_0000_0035)
 let capsToEscape = KeyMapping(src: capsLockUsage, dst: 0x7_0000_0029)
 
 let mappingFailuresBefore = failures
-checkEqual(parseUserKeyMapping("(null)\n"), [], "null output parses as empty")
-checkEqual(parseUserKeyMapping("""
-(
-        {
-        HIDKeyboardModifierMappingDst = 30064771125;
-        HIDKeyboardModifierMappingSrc = 30064771172;
-    },
-        {
-        HIDKeyboardModifierMappingDst = 30064771181;
-        HIDKeyboardModifierMappingSrc = 30064771129;
-    }
-)
-
-"""), [backtickSwap, hyperRemap], "hidutil --get output parses")
-checkEqual(parseUserKeyMapping("garbage {"), nil, "unparseable output is nil")
+let systemTable: NSArray = [
+    ["HIDKeyboardModifierMappingDst": NSNumber(value: 30064771125), "HIDKeyboardModifierMappingSrc": NSNumber(value: 30064771172)],
+    ["HIDKeyboardModifierMappingDst": NSNumber(value: 30064771181), "HIDKeyboardModifierMappingSrc": NSNumber(value: 30064771129)],
+]
+checkEqual(keyMappings(fromProperty: nil), [], "unset table is empty")
+checkEqual(keyMappings(fromProperty: systemTable), [backtickSwap, hyperRemap], "system property parses")
+checkEqual(keyMappings(fromProperty: "garbage" as NSString), nil, "non-table value is nil")
+checkEqual(keyMappings(fromProperty: [["HIDKeyboardModifierMappingSrc": 1]] as NSArray), nil, "entry missing dst is nil")
 checkEqual(withHyperRemap([backtickSwap]), [backtickSwap, hyperRemap], "install keeps other mappings")
 checkEqual(withHyperRemap([capsToEscape, backtickSwap]), [backtickSwap, hyperRemap], "install replaces other caps lock mapping")
 checkEqual(withHyperRemap([hyperRemap]), [hyperRemap], "install does not duplicate leftover remap")
 checkEqual(withoutHyperRemap([backtickSwap, hyperRemap]), [backtickSwap], "remove keeps other mappings")
-checkEqual(userKeyMappingJSON([]), "{\"UserKeyMapping\":[]}", "empty table JSON")
+checkEqual(userKeyMappingProperty([]), [], "empty table property")
 checkEqual(
-    userKeyMappingJSON([hyperRemap]),
-    "{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\":30064771129,\"HIDKeyboardModifierMappingDst\":30064771181}]}",
-    "table JSON"
+    userKeyMappingProperty([hyperRemap]),
+    [["HIDKeyboardModifierMappingSrc": 30064771129, "HIDKeyboardModifierMappingDst": 30064771181]],
+    "table property"
+)
+checkEqual(
+    keyMappings(fromProperty: userKeyMappingProperty([backtickSwap, hyperRemap]) as CFArray),
+    [backtickSwap, hyperRemap],
+    "property round-trips through CFArray"
 )
 print("\(failures == mappingFailuresBefore ? "ok  " : "FAIL") UserKeyMapping merge and parsing")
 

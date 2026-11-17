@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Project
 
-`hyperkey` is a tiny macOS Swift/AppKit menu bar utility. It remaps caps lock to F18 with `hidutil`, intercepts F18 with a HID-level `CGEventTap`, stamps ⇧⌃⌥⌘ onto other key events while held, and toggles real caps lock via IOKit when double-tapped alone. Public repo, distributed via the `drosam/homebrew-tap` formula and GitHub Releases.
+`hyperkey` is a tiny macOS Swift/AppKit menu bar utility. It remaps caps lock to F18 in the HID `UserKeyMapping` table via `IOHIDEventSystemClient`, intercepts F18 with a HID-level `CGEventTap`, stamps ⇧⌃⌥⌘ onto other key events while held, and toggles real caps lock via IOKit when double-tapped alone. Public repo, distributed via the `drosam/homebrew-tap` formula and GitHub Releases.
 
 ## Commands
 
@@ -21,7 +21,7 @@ Guidance for coding agents working in this repository.
 
 ## Layout
 
-- `main.swift`: runtime glue (CLI flags, `hidutil`, event tap, IOKit, menu bar).
+- `main.swift`: runtime glue (CLI flags, `UserKeyMapping` remap, event tap, IOKit, menu bar).
 - `HyperKeyState.swift`: pure, tested logic. All hold/tap/double-tap logic lives here, plus `UserKeyMapping` merge/parse and command-line parsing.
 - `Tests/main.swift`: dependency-free assert runner for the state machine.
 - `Makefile`: build, sign, test, dist, install/uninstall LaunchAgent. Version comes from `git describe` or `VERSION=`.
@@ -52,7 +52,7 @@ Guidance for coding agents working in this repository.
 ## Code notes
 
 - Accessibility permission is tied to the binary's code signature. `make build` signs with the `SIGN_ID` keychain identity (default `hyperkey-dev`) when present, else ad-hoc. Releases are ad-hoc (`SIGN_ID=-`); no signing secrets exist in CI.
-- SIGINT, SIGTERM, SIGHUP, menu quit, app termination (logout) and uninstall clear the `hidutil` remap through `shutdown()`; SIGKILL cannot. Signals are handled by Dispatch sources on the main queue, never in a raw signal handler.
+- SIGINT, SIGTERM, SIGHUP, menu quit, app termination (logout) and uninstall clear the `UserKeyMapping` remap through `shutdown()`; SIGKILL cannot. Signals are handled by Dispatch sources on the main queue, never in a raw signal handler.
 - Minimum macOS is 13 (`MACOS_MIN` in `Makefile`) to run; building needs Swift 6 (CLT/Xcode 16, macOS 14.5+).
 - Build and tests use Swift 6 language mode with `-warnings-as-errors` (`SWIFT_CHECKS`). Event-tap, IOHID and timer callbacks run on the main run loop and enter the main actor with `MainActor.assumeIsolated`.
 

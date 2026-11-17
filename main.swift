@@ -42,7 +42,7 @@ func logv(_ message: @autoclosure () -> String) {
 
 // Caps lock's toggle (state + LED) happens inside the HID driver, below any event
 // tap — swallowing its flagsChanged event doesn't stop it. So instead we remap
-// caps lock -> F18 in the driver itself via hidutil: no caps state ever toggles,
+// caps lock -> F18 in the driver itself (UserKeyMapping): no caps state ever toggles,
 // and we intercept F18 (which nothing else uses) as plain keyDown/keyUp.
 let f18Keycode: Int64 = 79 // macOS virtual keycode for F18
 
@@ -50,43 +50,35 @@ func printError(_ message: String) {
     FileHandle.standardError.write("\(message)\n".data(using: .utf8)!)
 }
 
-/// Runs hidutil and returns its stdout, or nil if it could not run or exited non-zero.
-func hidutil(_ arguments: [String]) -> String? {
-    let p = Process()
-    let output = Pipe()
-    p.executableURL = URL(fileURLWithPath: "/usr/bin/hidutil")
-    p.arguments = arguments
-    p.standardOutput = output
-    guard (try? p.run()) != nil else { return nil }
-    let data = output.fileHandleForReading.readDataToEndOfFile()
-    p.waitUntilExit()
-    guard p.terminationStatus == 0 else { return nil }
-    return String(decoding: data, as: UTF8.self)
-}
+// The same table `hidutil property` edits, through the public HID event system API.
+let userKeyMappingKey = "UserKeyMapping" as CFString
+let hidSystem = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
 
-// The table is system-wide and `--set` replaces all of it, so merge with other remaps.
+// The table is system-wide and setting it replaces all of it, so merge with other remaps.
+@MainActor
 func currentKeyMapping() -> [KeyMapping] {
-    guard let output = hidutil(["property", "--get", "UserKeyMapping"]),
-          let mappings = parseUserKeyMapping(output)
-    else {
-        printError("Could not read hidutil UserKeyMapping; other remaps will be cleared")
+    guard let mappings = keyMappings(fromProperty: IOHIDEventSystemClientCopyProperty(hidSystem, userKeyMappingKey)) else {
+        printError("Could not read UserKeyMapping; other remaps will be cleared")
         return []
     }
     return mappings
 }
 
+@MainActor
 func setKeyMapping(_ mappings: [KeyMapping]) -> Bool {
-    hidutil(["property", "--set", userKeyMappingJSON(mappings)]) != nil
+    IOHIDEventSystemClientSetProperty(hidSystem, userKeyMappingKey, userKeyMappingProperty(mappings) as CFArray)
 }
 
+@MainActor
 func installRemap() -> Bool {
     setKeyMapping(withHyperRemap(currentKeyMapping()))
 }
 
+@MainActor
 @discardableResult
 func removeRemap() -> Bool {
     guard setKeyMapping(withoutHyperRemap(currentKeyMapping())) else {
-        printError("Failed to remove the caps lock remap with hidutil")
+        printError("Failed to remove the caps lock remap")
         return false
     }
     return true
@@ -214,7 +206,7 @@ func createTap() -> CFMachPort? {
     )
 }
 
-// hidutil remaps can be dropped when keyboards come and go (Apple TN2450) and possibly on wake.
+// UserKeyMapping can be dropped when keyboards come and go (Apple TN2450) and possibly on wake.
 var remapCheckPending = false
 var keyboardMonitor: IOHIDManager?
 
@@ -228,7 +220,7 @@ func scheduleRemapCheck() {
         guard !current.contains(hyperRemap) else { return }
         print("caps lock remap was lost, re-applying")
         if !setKeyMapping(withHyperRemap(current)) {
-            printError("Failed to re-apply the caps lock remap with hidutil")
+            printError("Failed to re-apply the caps lock remap")
         }
     }
 }
@@ -252,11 +244,11 @@ func watchForLostRemap() {
     ) { _ in MainActor.assumeIsolated { scheduleRemapCheck() } }
 }
 
-// The remap goes in only once the tap exists, so a missing permission never touches hidutil.
+// The remap goes in only once the tap exists, so a missing permission never touches UserKeyMapping.
 @MainActor
 func start(with newTap: CFMachPort) {
     guard installRemap() else {
-        printError("Failed to remap caps lock to F18 with hidutil")
+        printError("Failed to remap caps lock to F18")
         exit(1) // nonzero so launchd retries
     }
     remapInstalled = true

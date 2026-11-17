@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Set the caps lock remap through the HID event system API instead of running `hidutil`.
+
 ## [0.2.0] - 2026-11-17
 
 ### Added

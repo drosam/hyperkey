@@ -150,7 +150,8 @@ until the next login or a restart command above.
 Caps lock's toggle (state + LED) happens inside the HID driver, below any
 event tap, so swallowing its events doesn't neutralize it. Instead:
 
-1. `hidutil` remaps caps lock -> F18 in the driver itself (`UserKeyMapping`),
+1. caps lock is remapped to F18 in the driver itself (`UserKeyMapping`, the
+   table `hidutil` edits, set through `IOHIDEventSystemClient`),
    so caps lock never toggles and the key arrives as plain F18 key events.
 2. A `CGEventTap` at the HID level intercepts F18: while it's held, ⇧⌃⌥⌘ is
    stamped onto every other key event.
