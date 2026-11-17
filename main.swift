@@ -55,8 +55,6 @@ if lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
     exit(1)
 }
 
-var remapInstalled = false
-
 /// The only exit path once the remap is installed.
 @MainActor
 func shutdown(_ status: Int32 = 0) -> Never {
@@ -80,7 +78,6 @@ func start(with newTap: CFMachPort) {
         printError("Failed to remap caps lock to F18")
         exit(1) // nonzero so launchd retries
     }
-    remapInstalled = true
     watchForLostRemap()
     tap = newTap
     let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, newTap, 0)

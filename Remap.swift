@@ -22,9 +22,13 @@ func setKeyMapping(_ mappings: [KeyMapping]) -> Bool {
     IOHIDEventSystemClientSetProperty(hidSystem, userKeyMappingKey, userKeyMappingProperty(mappings) as CFArray)
 }
 
+/// Whether this process installed the caps lock entry, so it must remove it on exit.
+@MainActor private(set) var remapInstalled = false
+
 @MainActor
 func installRemap() -> Bool {
-    setKeyMapping(withHyperRemap(currentKeyMapping()))
+    remapInstalled = setKeyMapping(withHyperRemap(currentKeyMapping()))
+    return remapInstalled
 }
 
 @MainActor
@@ -34,6 +38,7 @@ func removeRemap() -> Bool {
         printError("Failed to remove the caps lock remap")
         return false
     }
+    remapInstalled = false
     return true
 }
 
