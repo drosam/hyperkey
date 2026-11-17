@@ -49,7 +49,10 @@ install stops with `untrusted tap`, run `brew trust drosam/tap` and retry.
 It appears under System Settings -> General -> Login Items & Extensions ->
 **Allow in the Background**, not under Open at Login.
 
-Update with `brew upgrade hyperkey`, then re-enable Accessibility (see below).
+Update with `brew upgrade drosam/tap/hyperkey`, then re-grant Accessibility
+(see below). Use the full name: Homebrew 7 also has an unrelated `hyperkey`
+cask, so a bare `brew upgrade hyperkey` fails with `Cask 'hyperkey' is not
+installed`. `brew services` only handles formulae, so `hyperkey` works there.
 
 ### GitHub release download
 
@@ -96,14 +99,31 @@ instead (Terminal, iTerm2, ...); enable that app.
 Until granted, hyperkey waits without remapping caps lock and checks again
 every 2 s; once granted it starts on its own.
 
-**After every upgrade or rebuild**, macOS sees a new binary. If hyperkey
-stops reacting, quit it from the ✦ menu, remove it from the Accessibility
-list (or toggle it off and on), then restart it:
+**After every upgrade or rebuild**, macOS sees a new binary and the old grant
+no longer applies; toggling the old entry often does not help. Re-grant it:
 
-```sh
-brew services restart hyperkey                        # Homebrew
-launchctl kickstart -k gui/$(id -u)/com.drosam.hyperkey  # make install
-```
+1. Stop hyperkey:
+
+   ```sh
+   brew services stop hyperkey                               # Homebrew
+   launchctl bootout gui/$(id -u)/com.drosam.hyperkey        # make install
+   ```
+
+2. In the Accessibility list, remove `hyperkey` with **−**, then add it again
+   with **+** (press ⌘⇧G and paste `/opt/homebrew/opt/hyperkey/bin/hyperkey`
+   for Homebrew, or `~/.local/bin/hyperkey` for `make install`).
+3. Start it again:
+
+   ```sh
+   brew services start hyperkey                              # Homebrew
+   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.drosam.hyperkey.plist  # make install
+   ```
+
+If you add the entry while hyperkey is already waiting for permission, it
+starts on its own within 2 s.
+
+Once granted, the permission survives restarts: hyperkey starts at login and
+sets the caps lock remap again. Only a new binary needs a new grant.
 
 Always quit hyperkey before changing its Accessibility entry. Revoking the
 permission while it runs can freeze keyboard and mouse input until reboot.
@@ -164,6 +184,9 @@ closing the terminal (SIGHUP), logout, and `make uninstall`.
 **`Refusing to load formula drosam/tap/hyperkey from untrusted tap`.** Homebrew 6
 only loads third-party taps you trust. Run `brew trust drosam/tap`, then retry.
 
+**`Cask 'hyperkey' is not installed`.** Homebrew 7 picked its unrelated
+`hyperkey` cask. Use the full name: `brew upgrade drosam/tap/hyperkey`.
+
 **hyperkey does not react.** Check Accessibility permission (see above).
 Logs: `$(brew --prefix)/var/log/hyperkey.log` (Homebrew) or
 `~/Library/Logs/hyperkey.log` (`make install`).
@@ -179,6 +202,21 @@ With hyperkey already uninstalled, use
 `hidutil property --set '{"UserKeyMapping":[]}'`, which clears all `hidutil`
 remaps.
 
+**Double tap works but caps lock shortcuts do nothing.** hyperkey is adding
+⇧⌃⌥⌘; the app that handles your shortcuts (skhd, Raycast, ...) is not
+receiving them. It needs its own Accessibility permission and may have lost it
+after an upgrade or while you edited the list. skhd, for example, logs
+`must be run with accessibility access` to `/tmp/skhd_$USER.err.log` and
+exits. Re-enable it in Accessibility, then restart it
+(`launchctl kickstart -k gui/$(id -u)/com.koekeishiya.skhd` for skhd).
+
+To check after a restart that everything is up:
+
+```sh
+pgrep -l hyperkey                       # hyperkey is running
+hidutil property --get UserKeyMapping   # includes 30064771129 (caps lock)
+```
+
 **`hyperkey is already running`.** Only one hyperkey runs per user. Quit the
 other copy (`pgrep -l hyperkey`), for example with `brew services stop hyperkey`.
 
@@ -191,8 +229,8 @@ it again at launch.
 ## Uninstall
 
 ```sh
-brew services stop hyperkey && brew uninstall hyperkey   # Homebrew
-make uninstall                                           # source install
+brew services stop hyperkey && brew uninstall drosam/tap/hyperkey   # Homebrew
+make uninstall                                                      # source install
 ```
 
 Then remove hyperkey from the Accessibility list.
